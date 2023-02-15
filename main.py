@@ -1,5 +1,7 @@
 import tkinter as tk
 
+from pcbparse import Board
+
 def move():
     c.move(circle, 5, 5)
     coordinates = c.coords(circle)
@@ -9,7 +11,7 @@ def move():
 def reset():
     print("Reset")
     
-class Module:
+class Footprint:
     def __init__(self, w, c):
         self.w = w
         self.c = c
@@ -52,7 +54,11 @@ if __name__ == '__main__':
     button.grid(row=0, column=2, sticky="nsew")
 
     circle = c.create_oval(60,60,210,210)
-    what = Module(window,c)
+    what = Board()
+    what.Load()
+    print(what.net)
+    
+    Footprint(window,c)
     move()
 
     window.mainloop()
