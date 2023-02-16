@@ -9,8 +9,6 @@ def move():
     
     window.after(33, move)
 
-def reset():
-    print("Reset")
     
 class Footprint:
     def __init__(self, w, c):
@@ -111,6 +109,8 @@ if __name__ == '__main__':
     entry = tk.Entry(master=optFrame)
     entry.grid(row=0, column=1)
 
+    def reset():
+        print("Reset")
     button = tk.Button(text="Reset", master=optFrame, command=reset)
     button.grid(row=0, column=2, sticky="nsew")
 
