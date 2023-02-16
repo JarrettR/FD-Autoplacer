@@ -228,6 +228,7 @@ class Module(object):
             if item[0] == 'pad':
                 pad = Pad()
                 pad.From_PCB(item)
+                print(pad.at, pad.size)
                 self.pad.append(pad)
 
             if item[0] == 'model':

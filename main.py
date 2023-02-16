@@ -1,4 +1,5 @@
 import tkinter as tk
+import math
 
 from pcbparse import Board
 
@@ -54,6 +55,20 @@ class Footprint:
         body = c.create_rectangle(50 * z,50 * z,10 * z,10.3 * z)
         pad1 = c.create_rectangle(55 * z,54.5 * z,0.38 * z,1.7 * z)
         # circle = c.create_oval(60,60,210,210)
+        
+    def rotate(self, points, angle, center):
+        angle = math.radians(angle)
+        cos_val = math.cos(angle)
+        sin_val = math.sin(angle)
+        cx, cy = center
+        new_points = []
+        for x_old, y_old in points:
+            x_old -= cx
+            y_old -= cy
+            x_new = x_old * cos_val - y_old * sin_val
+            y_new = x_old * sin_val + y_old * cos_val
+            new_points.append([x_new + cx, y_new + cy])
+        return new_points
         
     def Move(self, coord):
         for shape in self.shapes:
