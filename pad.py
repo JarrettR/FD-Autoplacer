@@ -103,7 +103,6 @@ class Pad(object):
                     self.layers.append(layer)
             if item[0] == 'net':
                 self.net = item[1:] 
-                print(item[1:] )
             if item[0] == 'pinfunction':
                 self.pinfunction = item[1] 
             if item[0] == 'pintype':

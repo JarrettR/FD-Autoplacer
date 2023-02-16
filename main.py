@@ -15,20 +15,50 @@ class Footprint:
     def __init__(self, w, c):
         self.w = w
         self.c = c
+        self.coord_initial = [0,0]
         self.coord = [0,0]
         self.shapes = []
-        self.zoom = 5
-        self.create()
+        self.anchors = []
+        self.zoom = 2
         
-    def create(self):
+    def Load(self, mod):
+        self.coord_initial = mod.at
+        
+        points = {}
+        polypoints = []
+        for line in mod.fp_line:
+            if line.layer == 'F.CrtYd':
+                if len(polypoints) == 0:
+                    polypoints.append(line.start)
+                    
+                key = "{},{}".format(line.start[0],line.start[1])
+                if "{},{}".format(line.start[0],line.start[1]) in points.keys():
+                    key = "{},{}".format(line.end[0],line.end[1])
+                    line.end = line.start
+                points[key] = line.end
+            
+        for i in range(len(points)):
+            key = "{},{}".format(polypoints[i][0],polypoints[i][1])
+            polypoints.append(points[key])
+            
+        for i in range(len(polypoints)):
+            polypoints[i] = [(polypoints[i][0] + self.coord_initial[0]) * self.zoom,(polypoints[i][1] + self.coord_initial[1]) * self.zoom]
+
+        self.shapes.append(self.c.create_polygon(*polypoints, fill='red'))
+        # self.Move(self.coord_initial)
+        
+    def Create(self):
         z = self.zoom
+        centre = [self.coord_initial[0] * z, self.coord_initial[0] * z]
+        
         body = c.create_rectangle(50 * z,50 * z,10 * z,10.3 * z)
         pad1 = c.create_rectangle(55 * z,54.5 * z,0.38 * z,1.7 * z)
         # circle = c.create_oval(60,60,210,210)
         
-    def move(self, c, circle):
-        c.move(circle, 5, 5)
-        self.coord = c.coords(circle)
+    def Move(self, coord):
+        for shape in self.shapes:
+            self.c.move(shape, coord[0], [1])
+        # self.coord = c.coords(circle)
 
 
 if __name__ == '__main__':
@@ -68,7 +98,15 @@ if __name__ == '__main__':
             netlabel = tk.Checkbutton(text=net[1], master=netFrame, justify=tk.LEFT, variable=pcb.net[i][3])
             netlabel.pack(fill=tk.X, side=tk.TOP)
     
-    Footprint(window,c)
+    footprints = []
+    
+    for i, mod in enumerate(pcb.module):
+        fp = Footprint(window,c)
+        fp.Load(mod)
+        footprints.append(fp)
+    
+    for fp in footprints:
+        fp.Create()
     move()
 
     window.mainloop()
