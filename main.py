@@ -20,11 +20,12 @@ class Footprint:
         self.coord = [0,0]
         self.shapes = []
         self.anchors = []
-        self.zoom = 2
+        self.zoom = 3
         
     def Load(self, mod):
         self.coord_initial = mod.at
         
+        #courtyard
         points = {}
         polypoints = []
         for line in mod.fp_line:
@@ -43,10 +44,21 @@ class Footprint:
             polypoints.append(points[key])
             
         for i in range(len(polypoints)):
-            polypoints[i] = [(polypoints[i][0] + self.coord_initial[0]) * self.zoom,(polypoints[i][1] + self.coord_initial[1]) * self.zoom]
+            # polypoints[i] = [(polypoints[i][0] + self.coord_initial[0]) * self.zoom,(polypoints[i][1] + self.coord_initial[1]) * self.zoom]
+            polypoints[i] = [polypoints[i][0] * self.zoom,polypoints[i][1] * self.zoom]
 
         self.shapes.append(self.c.create_polygon(*polypoints, fill='red'))
-        # self.Move(self.coord_initial)
+        
+        #pads
+        for pad in mod.pad:
+            polypoints = []
+            polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] - (pad.size[1] / 2.0)) * self.zoom])
+            polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] - (pad.size[1] / 2.0)) * self.zoom])
+            polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
+            polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
+            self.shapes.append(self.c.create_polygon(*polypoints, fill='grey'))
+            
+        self.Move(self.coord_initial)
         
     def Create(self):
         z = self.zoom
@@ -72,7 +84,7 @@ class Footprint:
         
     def Move(self, coord):
         for shape in self.shapes:
-            self.c.move(shape, coord[0], [1])
+            self.c.move(shape, coord[0] * self.zoom, coord[1] * self.zoom)
         # self.coord = c.coords(circle)
 
 

@@ -87,7 +87,7 @@ class Pad(object):
 
         for item in input[4:]:
             if item[0] == 'size':
-                self.size = item[1:]
+                self.size = [float(item[1]),float(item[2])]
                 
             if item[0] == 'at':
                 for at in item[1:]:
