@@ -10,6 +10,32 @@ def move():
     window.after(33, move)
 
     
+class Nets:
+    def __init__(self, w, c):
+        self.w = w
+        self.c = c
+        self.nets = []
+        self.netnames = []
+    
+    def Load(self, nets):
+        #net #, name, count, checked
+        activenets = 0
+        for i, net in enumerate(nets):
+            if net[2] > 1:
+                nets[i].append(tk.IntVar(value=1))
+                self.nets.append(nets[i])
+                self.netnames.append(nets[i][1])
+                netlabel = tk.Checkbutton(text=net[1], master=netFrame, justify=tk.LEFT, variable=self.nets[activenets][3])
+                netlabel.pack(fill=tk.X, side=tk.TOP)
+                activenets += 1
+    
+    def Associate(self, footprints):
+        for i_f, fp in enumerate(footprints):
+            for i_p, pad in enumerate(fp.anchors):
+                if pad[1] in self.netnames:
+                    print(pad)
+                # print(pad)
+        
 class Footprint:
     def __init__(self, w, c):
         self.w = w
@@ -31,6 +57,7 @@ class Footprint:
                 if len(polypoints) == 0:
                     polypoints.append(line.start)
                     
+                #Conversion of mixed up start/end points to a polygon, by way of dictionary entries
                 key = "{},{}".format(line.start[0],line.start[1])
                 if "{},{}".format(line.start[0],line.start[1]) in points.keys():
                     key = "{},{}".format(line.end[0],line.end[1])
@@ -55,6 +82,7 @@ class Footprint:
             polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
             polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
             self.shapes.append(self.c.create_polygon(*polypoints, fill='grey'))
+            self.anchors.append(pad.net)
             
         self.Move(self.coord_initial)
         
@@ -100,30 +128,28 @@ if __name__ == '__main__':
     c.pack(fill=tk.Y, side=tk.LEFT)
 
 
-    optFrame.rowconfigure(0, minsize=50, weight=1)
+    optFrame.rowconfigure([0, 1], minsize=25, weight=1)
 
-    optFrame.columnconfigure([0, 1, 2], minsize=50, weight=1)
+    optFrame.columnconfigure([0, 1, 2, 3, 4, 5], minsize=50, weight=1)
 
-    label = tk.Label(text="Name", master=optFrame)
+    speed = tk.IntVar(value=1)
+    label = tk.Label(text="Speed (FPS)", master=optFrame)
     label.grid(row=0, column=0, sticky="nsew")
-    entry = tk.Entry(master=optFrame)
+    entry = tk.Entry(master=optFrame, text=speed)
     entry.grid(row=0, column=1)
 
     def reset():
         print("Reset")
     button = tk.Button(text="Reset", master=optFrame, command=reset)
-    button.grid(row=0, column=2, sticky="nsew")
+    button.grid(row=1, column=5, sticky="nsew")
 
     circle = c.create_oval(60,60,210,210)
     pcb = Board()
     pcb.Load()
 
-    #net #, name, count, checked
-    for i, net in enumerate(pcb.net):
-        if net[2] > 1:
-            pcb.net[i].append(tk.IntVar(value=1))
-            netlabel = tk.Checkbutton(text=net[1], master=netFrame, justify=tk.LEFT, variable=pcb.net[i][3])
-            netlabel.pack(fill=tk.X, side=tk.TOP)
+    
+    net = Nets(window,c)
+    net.Load(pcb.net)
     
     footprints = []
     
@@ -132,8 +158,8 @@ if __name__ == '__main__':
         fp.Load(mod)
         footprints.append(fp)
     
-    for fp in footprints:
-        fp.Create()
+    net.Associate(footprints)
+    
     move()
 
     window.mainloop()
