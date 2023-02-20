@@ -15,7 +15,7 @@ class Nets:
         self.w = w
         self.c = c
         self.nets = []
-        self.netnames = []
+        self.netnames = {}
     
     def Load(self, nets):
         #net #, name, count, checked
@@ -24,17 +24,24 @@ class Nets:
             if net[2] > 1:
                 nets[i].append(tk.IntVar(value=1))
                 self.nets.append(nets[i])
-                self.netnames.append(nets[i][1])
+                self.netnames[nets[i][1]] = []
                 netlabel = tk.Checkbutton(text=net[1], master=netFrame, justify=tk.LEFT, variable=self.nets[activenets][3])
                 netlabel.pack(fill=tk.X, side=tk.TOP)
                 activenets += 1
+    
+    def Draw(self):
+        for net in self.netnames:
+            print(net)
+        
     
     def Associate(self, footprints):
         for i_f, fp in enumerate(footprints):
             for i_p, pad in enumerate(fp.anchors):
                 if pad[1] in self.netnames:
-                    print(pad)
-                # print(pad)
+                    self.netnames[pad[1]].append([i_f, i_p])
+                    # print(pad, i_f, i_p)
+        print(self.netnames)
+        self.Draw()
         
 class Footprint:
     def __init__(self, w, c):
