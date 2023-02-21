@@ -27,9 +27,16 @@ class Nets:
                 netlabel.pack(fill=tk.X, side=tk.TOP)
                 activenets += 1
     
-    def calc_force(self, fp1, fp2):
-        pos1 = fp1.coord
-        pos2 = fp2.coord
+    def calc_electron(self, pos1, pos2):
+        dx = pos2[0] - pos1[0]
+        dy = pos2[1] - pos1[1]
+        distance = math.sqrt(dx ** 2 + dy ** 2)
+        if distance == 0:
+            return [0, 0]
+        force = SPRING_CONSTANT * distance
+        return [force * dx / distance, force * dy / distance]
+    
+    def calc_spring(self, pos1, pos2):
         dx = pos2[0] - pos1[0]
         dy = pos2[1] - pos1[1]
         distance = math.sqrt(dx ** 2 + dy ** 2)
@@ -42,9 +49,28 @@ class Nets:
         for i1, fp1 in enumerate(footprints):
             for i2, fp2 in enumerate(footprints):
                 if i1 != i2:
-                    force = self.calc_force(fp1, fp2) 
-                    footprints[i1].momentum[0] += force[0]
-                    footprints[i1].momentum[1] += force[1]
+                    force = self.calc_electron(fp1.coord, fp2.coord) 
+                    footprints[i1].momentum[0] -= force[0]
+                    footprints[i1].momentum[1] -= force[1]
+                    
+        for net in self.netnames:
+            # print(net)
+            for i, conn in enumerate(self.netnames[net]):
+                for e, conn in enumerate(self.netnames[net]):
+                    if i != e:
+                        pos1 = self.netnames[net][i]
+                        xy1 = footprints[pos1[0]].anchors[pos1[1]]
+                        pos2 = self.netnames[net][e]
+                        xy2 = footprints[pos2[0]].anchors[pos2[1]]
+                        
+                        force = self.calc_spring(xy1, xy2) 
+                        footprints[pos1[0]].momentum[0] += force[0]
+                        footprints[pos1[0]].momentum[1] += force[1]
+                        
+        for i, fp in enumerate(footprints): 
+            footprints[i].momentum[0] *= DAMPING
+            footprints[i].momentum[1] *= DAMPING
+            footprints[i].momentum[2] *= DAMPING
             
     
     def Draw(self, footprints):
@@ -54,26 +80,15 @@ class Nets:
             # print(net)
             for i, conn in enumerate(self.netnames[net]):
                 for e in range(i):
-                    # print("Line ", self.netnames[net][i], " to ", self.netnames[net][e])
                     pos1 = self.netnames[net][i]
                     xy1 = footprints[pos1[0]].anchors[pos1[1]]
                     z1 = footprints[pos1[0]].zoom
-                    # xy1[0] = xy1[0] * footprints[pos1[0]].zoom
-                    # xy1[1] = xy1[1] * footprints[pos1[0]].zoom
-                    # xy1[0] += footprints[pos1[0]].coord[0]
-                    # xy1[1] += footprints[pos1[0]].coord[1]
                     pos2 = self.netnames[net][e]
                     xy2 = footprints[pos2[0]].anchors[pos2[1]]
                     z2 = footprints[pos2[0]].zoom
-                    # xy2[0] = xy2[0] * footprints[pos2[0]].zoom
-                    # xy2[1] = xy2[1] * footprints[pos2[0]].zoom
-                    # xy2[0] += footprints[pos2[0]].coord[0]
-                    # xy2[1] += footprints[pos2[0]].coord[1]
-                    # print(xy1, xy2)
                     self.lines.append(self.c.create_line(xy1[0] * z1,xy1[1] * z1,xy2[0] * z2,xy2[1] * z2))
                 
         
-    
     def Associate(self, footprints):
         for i_f, fp in enumerate(footprints):
             for i_p, pad in enumerate(fp.nets):
@@ -94,7 +109,7 @@ class Footprint:
         self.nets = []
         self.zoom = 3
         self.force = 1
-        self.momentum = [0,0]
+        self.momentum = [0,0,0]
         
     def Load(self, mod):
         self.coord_initial = mod.at
