@@ -4,6 +4,8 @@ import math
 from pcbparse import Board
 
 
+SPRING_CONSTANT = 0.0005
+DAMPING = 0.9
     
 class Nets:
     def __init__(self, w, c):
@@ -24,6 +26,26 @@ class Nets:
                 netlabel = tk.Checkbutton(text=net[1], master=netFrame, justify=tk.LEFT, variable=self.nets[activenets][3])
                 netlabel.pack(fill=tk.X, side=tk.TOP)
                 activenets += 1
+    
+    def calc_force(self, fp1, fp2):
+        pos1 = fp1.coord
+        pos2 = fp2.coord
+        dx = pos2[0] - pos1[0]
+        dy = pos2[1] - pos1[1]
+        distance = math.sqrt(dx ** 2 + dy ** 2)
+        if distance == 0:
+            return [0, 0]
+        force = SPRING_CONSTANT * distance
+        return [force * dx / distance, force * dy / distance]
+    
+    def Calc(self, footprints):
+        for i1, fp1 in enumerate(footprints):
+            for i2, fp2 in enumerate(footprints):
+                if i1 != i2:
+                    force = self.calc_force(fp1, fp2) 
+                    footprints[i1].momentum[0] += force[0]
+                    footprints[i1].momentum[1] += force[1]
+            
     
     def Draw(self, footprints):
         for line in self.lines:
@@ -71,7 +93,8 @@ class Footprint:
         self.anchors = []
         self.nets = []
         self.zoom = 3
-        self.momentum = [1,1]
+        self.force = 1
+        self.momentum = [0,0]
         
     def Load(self, mod):
         self.coord_initial = mod.at
@@ -163,7 +186,7 @@ class Footprint:
             anchors.append(anchor)
         self.anchors = anchors
         self.coord = self.coord_initial
-        self.momentum = [1,1] #Todo: set to zero
+        self.momentum = [0,0]
 
 
 if __name__ == '__main__':
@@ -215,6 +238,8 @@ if __name__ == '__main__':
         for fp in footprints:
             fp.Move()
             net.Draw(footprints)
+            
+        net.Calc(footprints)
         
         window.after(330, move)
     def reset():
