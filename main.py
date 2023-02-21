@@ -29,19 +29,28 @@ class Nets:
                 netlabel.pack(fill=tk.X, side=tk.TOP)
                 activenets += 1
     
-    def Draw(self):
+    def Draw(self, footprints):
         for net in self.netnames:
-            print(net)
+            # print(net)
+            for i, conn in enumerate(self.netnames[net]):
+                for e in range(i):
+                    # print("Line ", self.netnames[net][i], " to ", self.netnames[net][e])
+                    pos1 = self.netnames[net][i]
+                    xy1 = footprints[pos1[0]].anchors[pos1[1]]
+                    pos2 = self.netnames[net][e]
+                    xy2 = footprints[pos2[0]].anchors[pos2[1]]
+                    self.c.create_line(xy1[0],xy1[1],xy2[0],xy2[1])
+                
         
     
     def Associate(self, footprints):
         for i_f, fp in enumerate(footprints):
-            for i_p, pad in enumerate(fp.anchors):
+            for i_p, pad in enumerate(fp.nets):
                 if pad[1] in self.netnames:
                     self.netnames[pad[1]].append([i_f, i_p])
                     # print(pad, i_f, i_p)
-        print(self.netnames)
-        self.Draw()
+        # print(self.netnames)
+        self.Draw(footprints)
         
 class Footprint:
     def __init__(self, w, c):
@@ -51,6 +60,7 @@ class Footprint:
         self.coord = [0,0]
         self.shapes = []
         self.anchors = []
+        self.nets = []
         self.zoom = 3
         
     def Load(self, mod):
@@ -89,7 +99,8 @@ class Footprint:
             polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
             polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
             self.shapes.append(self.c.create_polygon(*polypoints, fill='grey'))
-            self.anchors.append(pad.net)
+            self.nets.append(pad.net)
+            self.anchors.append([(pad.at[0] + self.coord_initial[0]) * self.zoom, (pad.at[1] + self.coord_initial[1]) * self.zoom])
             
         self.Move(self.coord_initial)
         
