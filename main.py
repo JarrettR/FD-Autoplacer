@@ -3,11 +3,6 @@ import math
 
 from pcbparse import Board
 
-def move():
-    c.move(circle, 5, 5)
-    coordinates = c.coords(circle)
-    
-    window.after(33, move)
 
     
 class Nets:
@@ -16,6 +11,7 @@ class Nets:
         self.c = c
         self.nets = []
         self.netnames = {}
+        self.lines = []
     
     def Load(self, nets):
         #net #, name, count, checked
@@ -30,6 +26,8 @@ class Nets:
                 activenets += 1
     
     def Draw(self, footprints):
+        for line in self.lines:
+            self.c.delete(line)
         for net in self.netnames:
             # print(net)
             for i, conn in enumerate(self.netnames[net]):
@@ -37,9 +35,20 @@ class Nets:
                     # print("Line ", self.netnames[net][i], " to ", self.netnames[net][e])
                     pos1 = self.netnames[net][i]
                     xy1 = footprints[pos1[0]].anchors[pos1[1]]
+                    z1 = footprints[pos1[0]].zoom
+                    # xy1[0] = xy1[0] * footprints[pos1[0]].zoom
+                    # xy1[1] = xy1[1] * footprints[pos1[0]].zoom
+                    # xy1[0] += footprints[pos1[0]].coord[0]
+                    # xy1[1] += footprints[pos1[0]].coord[1]
                     pos2 = self.netnames[net][e]
                     xy2 = footprints[pos2[0]].anchors[pos2[1]]
-                    self.c.create_line(xy1[0],xy1[1],xy2[0],xy2[1])
+                    z2 = footprints[pos2[0]].zoom
+                    # xy2[0] = xy2[0] * footprints[pos2[0]].zoom
+                    # xy2[1] = xy2[1] * footprints[pos2[0]].zoom
+                    # xy2[0] += footprints[pos2[0]].coord[0]
+                    # xy2[1] += footprints[pos2[0]].coord[1]
+                    # print(xy1, xy2)
+                    self.lines.append(self.c.create_line(xy1[0] * z1,xy1[1] * z1,xy2[0] * z2,xy2[1] * z2))
                 
         
     
@@ -62,6 +71,7 @@ class Footprint:
         self.anchors = []
         self.nets = []
         self.zoom = 3
+        self.momentum = [1,1]
         
     def Load(self, mod):
         self.coord_initial = mod.at
@@ -100,7 +110,8 @@ class Footprint:
             polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
             self.shapes.append(self.c.create_polygon(*polypoints, fill='grey'))
             self.nets.append(pad.net)
-            self.anchors.append([(pad.at[0] + self.coord_initial[0]) * self.zoom, (pad.at[1] + self.coord_initial[1]) * self.zoom])
+            # self.anchors.append([(pad.at[0] + self.coord_initial[0]) * 1, (pad.at[1] + self.coord_initial[1]) * 1])
+            self.anchors.append([pad.at[0], pad.at[1]])
             
         self.Move(self.coord_initial)
         
@@ -126,10 +137,33 @@ class Footprint:
             new_points.append([x_new + cx, y_new + cy])
         return new_points
         
-    def Move(self, coord):
+    def Move(self, coord = False):
+        if coord is False:
+            coord = self.momentum
         for shape in self.shapes:
             self.c.move(shape, coord[0] * self.zoom, coord[1] * self.zoom)
-        # self.coord = c.coords(circle)
+        self.coord = c.coords(self.shapes[0])
+        self.coord[0] = self.coord[0] / self.zoom
+        self.coord[1] = self.coord[1] / self.zoom
+        for i, a in enumerate(self.anchors):
+            self.anchors[i][0] += coord[0]
+            self.anchors[i][1] += coord[1]
+            
+    def Reset(self):
+        diff = [0,0]
+        # print(self.coord)
+        diff[0] = -1 * (self.coord[0] - self.coord_initial[0])
+        diff[1] = -1 * (self.coord[1] - self.coord_initial[1])
+        for shape in self.shapes:
+            self.c.move(shape, diff[0] * self.zoom, diff[1] * self.zoom)
+        anchors = []
+        for anchor in self.anchors:
+            anchor[0] += diff[0]
+            anchor[1] += diff[1]
+            anchors.append(anchor)
+        self.anchors = anchors
+        self.coord = self.coord_initial
+        self.momentum = [1,1] #Todo: set to zero
 
 
 if __name__ == '__main__':
@@ -156,12 +190,8 @@ if __name__ == '__main__':
     entry = tk.Entry(master=optFrame, text=speed)
     entry.grid(row=0, column=1)
 
-    def reset():
-        print("Reset")
-    button = tk.Button(text="Reset", master=optFrame, command=reset)
-    button.grid(row=1, column=5, sticky="nsew")
 
-    circle = c.create_oval(60,60,210,210)
+    # circle = c.create_oval(60,60,210,210)
     pcb = Board()
     pcb.Load()
 
@@ -178,6 +208,20 @@ if __name__ == '__main__':
     
     net.Associate(footprints)
     
+    
+    def move():
+        # c.move(circle, 5, 5)
+        # coordinates = c.coords(circle)
+        for fp in footprints:
+            fp.Move()
+            net.Draw(footprints)
+        
+        window.after(330, move)
+    def reset():
+        for fp in footprints:
+            fp.Reset()
+    button = tk.Button(text="Reset", master=optFrame, command=reset)
+    button.grid(row=1, column=5, sticky="nsew")
     move()
 
     window.mainloop()
