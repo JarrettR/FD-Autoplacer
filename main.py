@@ -102,17 +102,21 @@ class Footprint:
     def __init__(self, w, c):
         self.w = w
         self.c = c
-        self.coord_initial = [0,0]
-        self.coord = [0,0]
+        self.coord_initial = [0,0,0]
+        self.coord = [0,0,0]
         self.shapes = []
+        self.shape_coords = []
+        self.shape_fills = []
         self.anchors = []
         self.nets = []
-        self.zoom = 3
+        self.zoom = 5
         self.force = 1
-        self.momentum = [0,0,0]
+        self.momentum = [0,0,1]
         
     def Load(self, mod):
         self.coord_initial = mod.at
+        if len(self.coord_initial) == 2:
+            self.coord_initial.append(0)
         
         #courtyard
         points = {}
@@ -138,6 +142,8 @@ class Footprint:
             polypoints[i] = [polypoints[i][0] * self.zoom,polypoints[i][1] * self.zoom]
 
         self.shapes.append(self.c.create_polygon(*polypoints, fill='red'))
+        self.shape_coords.append(polypoints)
+        self.shape_fills.append('red')
         
         #pads
         for pad in mod.pad:
@@ -146,7 +152,12 @@ class Footprint:
             polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] - (pad.size[1] / 2.0)) * self.zoom])
             polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
             polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)) * self.zoom, (pad.at[1] + (pad.size[1] / 2.0)) * self.zoom])
+            # Flatten for internal representation
+            # flat_list = [item for sublist in polypoints for item in sublist]
+            # self.shape_coords.append(flat_list)
+            self.shape_coords.append(polypoints)
             self.shapes.append(self.c.create_polygon(*polypoints, fill='grey'))
+            self.shape_fills.append('grey')
             self.nets.append(pad.net)
             # self.anchors.append([(pad.at[0] + self.coord_initial[0]) * 1, (pad.at[1] + self.coord_initial[1]) * 1])
             self.anchors.append([pad.at[0], pad.at[1]])
@@ -172,18 +183,44 @@ class Footprint:
             y_old -= cy
             x_new = x_old * cos_val - y_old * sin_val
             y_new = x_old * sin_val + y_old * cos_val
-            new_points.append([x_new + cx, y_new + cy])
+            new_points.append(x_new + cx)
+            new_points.append(y_new + cy)
         return new_points
         
     def Move(self, coord = False):
         if coord is False:
             coord = self.momentum
-        for shape in self.shapes:
-            self.c.move(shape, coord[0] * self.zoom, coord[1] * self.zoom)
-        self.coord = c.coords(self.shapes[0])
-        self.coord[0] = self.coord[0] / self.zoom
-        self.coord[1] = self.coord[1] / self.zoom
-        for i, a in enumerate(self.anchors):
+        new_shapes = []
+        new_fills = []
+        for shape in self.shape_coords:
+            # coords = self.c.coords(shape)
+            flat_shape = shape
+            pts = []
+            #Flatten for internal representation
+            if isinstance(shape[0], list):
+                flat_shape = [item for sublist in shape for item in sublist]
+                
+            i = 0
+            while i < len(flat_shape):
+                pts.append([flat_shape[i] + (coord[0] * self.zoom), flat_shape[i+1] + (coord[1] * self.zoom)])
+                i += 2
+            # print(pts)
+            pts = self.rotate(pts, self.momentum[2], self.coord[0:2])
+            new_fills.append(self.c.itemcget(shape, "fill"))
+            self.c.delete(shape)
+            new_shapes.append(pts)
+            # self.c.move(shape, coord[0] * self.zoom, coord[1] * self.zoom)
+        # self.coord = self.c.coords(self.shapes[0])
+        self.shapes = []
+        self.shape_coords = new_shapes
+        for i in range(len(new_shapes)):
+            self.shapes.append(self.c.create_polygon(*new_shapes[i], fill=self.shape_fills[i]))
+        self.coord[0] += coord[0]
+        self.coord[1] += coord[1]
+        self.coord[2] += coord[2]
+        # self.coord[0] = self.coord[0] / self.zoom
+        # self.coord[1] = self.coord[1] / self.zoom
+        for i, a in enumerate(self.anchors): #Todo calc rotation
             self.anchors[i][0] += coord[0]
             self.anchors[i][1] += coord[1]
             
@@ -201,7 +238,7 @@ class Footprint:
             anchors.append(anchor)
         self.anchors = anchors
         self.coord = self.coord_initial
-        self.momentum = [0,0]
+        self.momentum = [0,0,0]
 
 
 if __name__ == '__main__':
@@ -248,8 +285,6 @@ if __name__ == '__main__':
     
     
     def move():
-        # c.move(circle, 5, 5)
-        # coordinates = c.coords(circle)
         for fp in footprints:
             fp.Move()
             net.Draw(footprints)
