@@ -9,7 +9,7 @@ DAMPING = 0.9
     
 class Viewport:
     def __init__(self):
-        self.zoom = 3
+        self.zoom = 5
         self.pan = [0,0]
         self.tk_shapes = []
         self.tk_nets = []
@@ -161,7 +161,7 @@ class Nets:
         for i, fp in enumerate(footprints): 
             footprints[i].momentum[0] *= DAMPING
             footprints[i].momentum[1] *= DAMPING
-            footprints[i].momentum[2] *= DAMPING
+            # footprints[i].momentum[2] *= DAMPING
             
     def Associate(self, footprints):
         for i_f, fp in enumerate(footprints):
@@ -177,7 +177,6 @@ class Footprint:
         self.coord_initial = [0,0,0]
         self.coord_current = [0,0,0]
         self.shapes = []
-        self.shape_coords = []
         self.shape_fills = []
         self.anchors = []
         self.nets = []
@@ -247,15 +246,17 @@ class Footprint:
     def Move(self, move = False):
         if move is False:
             move = self.momentum
-        # new_shapes = []
-        # for shape in self.shape_coords:
-            # pts = self.rotate(shape, self.momentum[2], self.coord_current[0:2])
-            # new_shapes.append(pts)
-        # self.shapes = new_shapes
+        new_shapes = []
+        for shape in self.shapes:
+            pts = self.rotate(shape, self.momentum[2], [0,0]) # self.coord_current[0:2])
+            new_shapes.append(pts)
+        self.shapes = new_shapes
         self.coord_current[0] += move[0]
         self.coord_current[1] += move[1]
         self.coord_current[2] += move[2]
+        self.anchors = self.rotate(self.anchors, self.momentum[2], [0,0])
         # for i, a in enumerate(self.anchors): #Todo calc rotation
+            # self.anchors[i] = self.rotate[self.anchors[i]
             # self.anchors[i][0] += move[0]
             # self.anchors[i][1] += move[1]
             
