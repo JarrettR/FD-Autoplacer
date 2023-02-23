@@ -19,8 +19,8 @@ class Viewport:
 
         optFrame = tk.Frame(master=window, height=50,relief=tk.RAISED,borderwidth=1)
         optFrame.pack(fill=tk.X, side=tk.BOTTOM)
-        netFrame = tk.Frame(master=window, width=250,relief=tk.SUNKEN,borderwidth=1)
-        netFrame.pack(fill=tk.Y, side=tk.RIGHT)
+        self.netFrame = tk.Frame(master=window, width=250,relief=tk.SUNKEN,borderwidth=1)
+        self.netFrame.pack(fill=tk.Y, side=tk.RIGHT)
         c = tk.Canvas(window, height=600,width=600)
         c.pack(fill=tk.Y, side=tk.LEFT)
 
@@ -41,14 +41,11 @@ class Viewport:
     def Load(self, nets):
         #net #, name, count, checked
         activenets = 0
-        for i, net in enumerate(nets):
-            if net[2] > 1:
-                nets[i].append(tk.IntVar(value=1))
-                self.nets.append(nets[i])
-                self.netnames[nets[i][1]] = []
-                netlabel = tk.Checkbutton(text=net[1], master=netFrame, justify=tk.LEFT, variable=self.nets[activenets][3])
-                netlabel.pack(fill=tk.X, side=tk.TOP)
-                activenets += 1
+        for net in enumerate(nets.netnames):
+            self.tk_nets.append([net,tk.IntVar(value=1)])
+            netlabel = tk.Checkbutton(text=net, master=self.netFrame, justify=tk.LEFT, variable=self.tk_nets[activenets][1])
+            netlabel.pack(fill=tk.X, side=tk.TOP)
+            activenets += 1
         
     def Draw(self, footprints, nets):
         self.footprints = footprints
@@ -57,12 +54,15 @@ class Viewport:
         #Footprints
         for shape in self.tk_shapes:
             self.c.delete(shape)
-        i = 0
-        while i < len(footprints.shapes):
-            poly = []
-            for pts in footprints.shapes[i]:
-                poly.append(pts[0] * z, pts[1] * z)
-            self.tk_shapes.append(self.c.create_polygon(*poly, fill=footprints.shape_fills[i]))
+        for fp in footprints:
+            move = fp.coord_current
+            i = 0
+            while i < len(fp.shapes):
+                poly = []
+                for pts in fp.shapes[i]:
+                    poly.append([(pts[0] + move[0]) * z, (pts[1] + move[1]) * z])
+                self.tk_shapes.append(self.c.create_polygon(*poly, fill=fp.shape_fills[i]))
+                i += 1
         
         #Nets
         for line in self.tk_lines:
@@ -72,9 +72,13 @@ class Viewport:
             for i, conn in enumerate(nets.netnames[net]):
                 for e in range(i):
                     pos1 = nets.netnames[net][i]
-                    xy1 = footprints[pos1[0]].anchors[pos1[1]]
+                    xy1 = footprints[pos1[0]].anchors[pos1[1]].copy()
+                    xy1[0] += footprints[pos1[0]].coord_current[0]
+                    xy1[1] += footprints[pos1[0]].coord_current[1]
                     pos2 = nets.netnames[net][e]
-                    xy2 = footprints[pos2[0]].anchors[pos2[1]]
+                    xy2 = footprints[pos2[0]].anchors[pos2[1]].copy()
+                    xy2[0] += footprints[pos2[0]].coord_current[0]
+                    xy2[1] += footprints[pos2[0]].coord_current[1]
                     self.tk_lines.append(self.c.create_line(xy1[0] * z,xy1[1] * z,xy2[0] * z,xy2[1] * z))
         
     def _draw_nets(self):
@@ -87,19 +91,13 @@ class Nets:
     def __init__(self):
         self.nets = []
         self.netnames = {}
-        self.lines = []
     
     def Load(self, nets):
-        #net #, name, count, checked
+        #net format: net number, name, count, checked
         activenets = 0
         for i, net in enumerate(nets):
             if net[2] > 1:
-                # nets[i].append(tk.IntVar(value=1))
-                self.nets.append(nets[i])
-                self.netnames[nets[i][1]] = [] #nets[i]
-                # netlabel = tk.Checkbutton(text=net[1], master=netFrame, justify=tk.LEFT, variable=self.nets[activenets][3])
-                # netlabel.pack(fill=tk.X, side=tk.TOP)
-                # activenets += 1
+                self.netnames[nets[i][1]] = []
     
     def calc_electron(self, pos1, pos2):
         dx = pos2[0] - pos1[0]
@@ -269,8 +267,8 @@ if __name__ == '__main__':
     pcb.Load()
 
     
-    net = Nets()
-    net.Load(pcb.net)
+    nets = Nets()
+    nets.Load(pcb.net)
     
     footprints = []
     
@@ -278,15 +276,17 @@ if __name__ == '__main__':
         fp = Footprint(mod)
         footprints.append(fp)
     
-    net.Associate(footprints)
+    nets.Associate(footprints)
     
+    vp.Load(nets)
+    vp.Draw(footprints, nets)
     
     def move():
         for fp in footprints:
             fp.Move()
-            # net.Draw(footprints)
+            # nets.Draw(footprints)
             
-        # net.Calc(footprints)
+        # nets.Calc(footprints)
         
         # window.after(330, move)
     def reset():
