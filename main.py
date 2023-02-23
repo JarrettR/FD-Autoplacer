@@ -4,7 +4,9 @@ import math
 from pcbparse import Board
 
 
+ELECTRON_CONSTANT = 0.002
 SPRING_CONSTANT = 0.0005
+TORQUE_CONSTANT = 1.0
 DAMPING = 0.9
     
 class Viewport:
@@ -93,7 +95,7 @@ class Viewport:
         
         self.Draw(self.footprints, self.nets)
         
-        self.w.after(330, self.Animate)
+        self.w.after(33, self.Animate)
         
     def Reset(self):
         for fp in self.footprints:
@@ -121,7 +123,7 @@ class Nets:
         distance = math.sqrt(dx ** 2 + dy ** 2)
         if distance == 0:
             return [0, 0]
-        force = SPRING_CONSTANT * distance
+        force = ELECTRON_CONSTANT * distance
         return [force * dx / distance, force * dy / distance]
     
     def calc_spring(self, pos1, pos2):
@@ -132,6 +134,12 @@ class Nets:
             return [0, 0]
         force = SPRING_CONSTANT * distance
         return [force * dx / distance, force * dy / distance]
+    
+    def calc_torque(self, force, xy):
+        distance = math.sqrt(xy[0] ** 2 + xy[1] ** 2)
+        
+        torque = xy[0]*force[1] - xy[1]*force[0]
+        return torque * TORQUE_CONSTANT
     
     def Calc(self, footprints):
         for i1, fp1 in enumerate(footprints):
@@ -154,14 +162,16 @@ class Nets:
                             xy2 = [sum(x) for x in zip(footprints[pos2[0]].anchors[pos2[1]], footprints[pos2[0]].coord_current)]
                             # xy2 = footprints[pos2[0]].anchors[pos2[1]]
                             
-                            force = self.calc_spring(xy1, xy2) 
+                            force = self.calc_spring(xy1, xy2)
+                            torque = self.calc_torque(force, footprints[pos1[0]].anchors[pos1[1]])
                             footprints[pos1[0]].momentum[0] += force[0]
                             footprints[pos1[0]].momentum[1] += force[1]
+                            footprints[pos1[0]].momentum[2] += torque
                         
         for i, fp in enumerate(footprints): 
             footprints[i].momentum[0] *= DAMPING
             footprints[i].momentum[1] *= DAMPING
-            # footprints[i].momentum[2] *= DAMPING
+            footprints[i].momentum[2] *= DAMPING
             
     def Associate(self, footprints):
         for i_f, fp in enumerate(footprints):
@@ -181,7 +191,7 @@ class Footprint:
         self.anchors = []
         self.nets = []
         self.force = 1
-        self.momentum = [0,1,1]
+        self.momentum = [0,0,0]
         
         if mod != False:
             self.Load(mod)
@@ -255,10 +265,6 @@ class Footprint:
         self.coord_current[1] += move[1]
         self.coord_current[2] += move[2]
         self.anchors = self.rotate(self.anchors, self.momentum[2], [0,0])
-        # for i, a in enumerate(self.anchors): #Todo calc rotation
-            # self.anchors[i] = self.rotate[self.anchors[i]
-            # self.anchors[i][0] += move[0]
-            # self.anchors[i][1] += move[1]
             
     def Reset(self):
         diff = [0,0]
