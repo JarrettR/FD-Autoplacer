@@ -244,7 +244,7 @@ class Footprint:
         if len(self.coord_initial) == 2:
             self.coord_initial.append(0)
         
-        self.coord_current = self.coord_initial
+        self.coord_current = self.coord_initial.copy()
         #courtyard
         points = {}
         polypoints = []
@@ -324,9 +324,9 @@ class Footprint:
             # anchor[0] += diff[0]
             # anchor[1] += diff[1]
             # anchors.append(anchor)
-        self.anchors = self.anchors_initial
-        self.coord_current = self.coord_initial
-        self.shapes = self.shapes_initial
+        self.anchors = self.anchors_initial.copy()
+        self.coord_current = self.coord_initial.copy()
+        self.shapes = self.shapes_initial.copy()
         self.momentum = [0,0,0]
 
 
