@@ -71,7 +71,7 @@ class Viewport:
             netlabel.pack(fill=tk.X, side=tk.TOP)
             activenets += 1
         
-    def Draw(self, footprints, nets):
+    def Draw(self, footprints, nets, activenets):
         self.footprints = footprints
         self.nets = nets
         z = self.zoom
@@ -91,7 +91,7 @@ class Viewport:
         #Nets
         for line in self.tk_lines:
             self.c.delete(line)
-        for net in nets.netnames:
+        for net in activenets:
             # print(net)
             for i, conn in enumerate(nets.netnames[net]):
                 for e in range(i):
@@ -122,13 +122,19 @@ class Viewport:
         except:
             SPRING_CONSTANT = 0
             
+                
         for fp in self.footprints:
             fp.Move()
             # nets.Draw(footprints)
             
-        nets.Calc(footprints)
+        activenets = []
+        for net in self.tk_nets:
+            if int(net[1].get()) == 1:
+                activenets.append(net[0][1])
+                
+        nets.Calc(footprints, activenets)
         
-        self.Draw(self.footprints, self.nets)
+        self.Draw(self.footprints, self.nets,activenets)
         
         try:
             speed = int(self.speed.get())
@@ -182,7 +188,7 @@ class Nets:
         torque = xy[0]*force[1] - xy[1]*force[0]
         return torque * TORQUE_CONSTANT
     
-    def Calc(self, footprints):
+    def Calc(self, footprints, activenets):
         for i1, fp1 in enumerate(footprints):
             for i2, fp2 in enumerate(footprints):
                 if i1 != i2:
@@ -190,18 +196,15 @@ class Nets:
                     footprints[i1].momentum[0] -= force[0]
                     footprints[i1].momentum[1] -= force[1]
                     
-        for net in self.netnames:
-            # print(net)
+        for net in activenets:
             for i, conn in enumerate(self.netnames[net]):
                 for e, conn in enumerate(self.netnames[net]):
                     if i != e:
                         pos1 = self.netnames[net][i]
                         pos2 = self.netnames[net][e]
                         if pos1[0] != pos2[0]:
-                            # xy1 = footprints[pos1[0]].anchors[pos1[1]] + footprints[pos1[0]].coor
                             xy1 = [sum(x) for x in zip(footprints[pos1[0]].anchors[pos1[1]], footprints[pos1[0]].coord_current)]
                             xy2 = [sum(x) for x in zip(footprints[pos2[0]].anchors[pos2[1]], footprints[pos2[0]].coord_current)]
-                            # xy2 = footprints[pos2[0]].anchors[pos2[1]]
                             
                             force = self.calc_spring(xy1, xy2)
                             torque = self.calc_torque(force, footprints[pos1[0]].anchors[pos1[1]])
@@ -219,9 +222,6 @@ class Nets:
             for i_p, pad in enumerate(fp.nets):
                 if pad[1] in self.netnames:
                     self.netnames[pad[1]].append([i_f, i_p])
-                    # print(pad, i_f, i_p)
-        # print(self.netnames)
-        # self.Draw(footprints)
         
 class Footprint:
     def __init__(self, mod = False):
@@ -279,11 +279,9 @@ class Footprint:
             self.shapes_initial.append(polypoints)
             self.shape_fills.append('grey')
             self.nets.append(pad.net)
-            # self.anchors.append([(pad.at[0] + self.coord_initial[0]) * 1, (pad.at[1] + self.coord_initial[1]) * 1])
             self.anchors.append([pad.at[0], pad.at[1]])
             self.anchors_initial.append([pad.at[0], pad.at[1]])
             
-        # self.Move(self.coord_initial)
         
     def rotate(self, points, angle, center):
         angle = math.radians(angle)
@@ -313,17 +311,6 @@ class Footprint:
         self.anchors = self.rotate(self.anchors, self.momentum[2], [0,0])
             
     def Reset(self):
-        # diff = [0,0]
-        # # print(self.coord)
-        # diff[0] = -1 * (self.coord[0] - self.coord_initial[0])
-        # diff[1] = -1 * (self.coord[1] - self.coord_initial[1])
-        # for shape in self.shapes:
-            # self.c.move(shape, diff[0] * self.zoom, diff[1] * self.zoom)
-        # anchors = []
-        # for anchor in self.anchors:
-            # anchor[0] += diff[0]
-            # anchor[1] += diff[1]
-            # anchors.append(anchor)
         self.anchors = self.anchors_initial.copy()
         self.coord_current = self.coord_initial.copy()
         self.shapes = self.shapes_initial.copy()
@@ -349,7 +336,7 @@ if __name__ == '__main__':
     nets.Associate(footprints)
     
     vp.Load(nets)
-    vp.Draw(footprints, nets)
+    vp.Draw(footprints, nets, [])
 
 
     vp.Start()
