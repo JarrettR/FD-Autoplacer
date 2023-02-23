@@ -31,11 +31,30 @@ class Viewport:
 
         optFrame.columnconfigure([0, 1, 2, 3, 4, 5], minsize=50, weight=1)
 
-        speed = tk.IntVar(value=1)
+        self.speed = tk.IntVar(value=33)
         label = tk.Label(text="Speed (FPS)", master=optFrame)
         label.grid(row=0, column=0, sticky="nsew")
-        entry = tk.Entry(master=optFrame, text=speed)
+        entry = tk.Entry(master=optFrame, text=self.speed)
         entry.grid(row=0, column=1)
+        
+        
+        self.damping = tk.StringVar(value="0.9")
+        label = tk.Label(text="Damping", master=optFrame)
+        label.grid(row=1, column=0, sticky="nsew")
+        entry = tk.Entry(master=optFrame, text=self.damping)
+        entry.grid(row=1, column=1)
+        
+        self.attraction = tk.StringVar(value="0.0005")
+        label = tk.Label(text="Attraction", master=optFrame)
+        label.grid(row=0, column=2, sticky="nsew")
+        entry = tk.Entry(master=optFrame, text=self.attraction)
+        entry.grid(row=0, column=3)
+        
+        self.repulsion = tk.StringVar(value="0.002")
+        label = tk.Label(text="Repulsion", master=optFrame)
+        label.grid(row=1, column=2, sticky="nsew")
+        entry = tk.Entry(master=optFrame, text=self.repulsion)
+        entry.grid(row=1, column=3)
             
         button = tk.Button(text="Reset", master=optFrame, command=self.Reset)
         button.grid(row=1, column=5, sticky="nsew")
@@ -87,6 +106,22 @@ class Viewport:
                     self.tk_lines.append(self.c.create_line(xy1[0] * z,xy1[1] * z,xy2[0] * z,xy2[1] * z))
         
     def Animate(self):
+        global ELECTRON_CONSTANT
+        global SPRING_CONSTANT
+        global DAMPING
+        try:
+            DAMPING = float(self.damping.get())
+        except:
+            DAMPING = 1
+        try:
+            ELECTRON_CONSTANT = float(self.repulsion.get())
+        except:
+            ELECTRON_CONSTANT = 0
+        try:
+            SPRING_CONSTANT = float(self.attraction.get())
+        except:
+            SPRING_CONSTANT = 0
+            
         for fp in self.footprints:
             fp.Move()
             # nets.Draw(footprints)
@@ -95,7 +130,13 @@ class Viewport:
         
         self.Draw(self.footprints, self.nets)
         
-        self.w.after(33, self.Animate)
+        try:
+            speed = int(self.speed.get())
+        except:
+            speed = 1
+        if speed == 0:
+            speed = 1
+        self.w.after(int(1000 / speed), self.Animate)
         
     def Reset(self):
         for fp in self.footprints:
