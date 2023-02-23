@@ -34,6 +34,9 @@ class Viewport:
         label.grid(row=0, column=0, sticky="nsew")
         entry = tk.Entry(master=optFrame, text=speed)
         entry.grid(row=0, column=1)
+            
+        button = tk.Button(text="Reset", master=optFrame, command=self.Reset)
+        button.grid(row=1, column=5, sticky="nsew")
         
         self.w = window
         self.c = c
@@ -81,10 +84,23 @@ class Viewport:
                     xy2[1] += footprints[pos2[0]].coord_current[1]
                     self.tk_lines.append(self.c.create_line(xy1[0] * z,xy1[1] * z,xy2[0] * z,xy2[1] * z))
         
-    def _draw_nets(self):
-        z = self.zoom
+    def Animate(self):
+        for fp in self.footprints:
+            fp.Move()
+            # nets.Draw(footprints)
+            
+        # nets.Calc(footprints)
+        
+        self.Draw(self.footprints, self.nets)
+        
+        self.w.after(330, self.Animate)
+        
+    def Reset(self):
+        for fp in self.footprints:
+            fp.Reset()
         
     def Start(self):
+        self.Animate()
         self.w.mainloop()
         
 class Nets:
@@ -163,7 +179,7 @@ class Footprint:
         self.anchors = []
         self.nets = []
         self.force = 1
-        self.momentum = [0,0,1]
+        self.momentum = [0,1,1]
         
         if mod != False:
             self.Load(mod)
@@ -228,17 +244,17 @@ class Footprint:
     def Move(self, move = False):
         if move is False:
             move = self.momentum
-        new_shapes = []
-        for shape in self.shape_coords:
-            pts = self.rotate(shape, self.momentum[2], self.coord_current[0:2])
-            new_shapes.append(pts)
-        self.shapes = new_shapes
+        # new_shapes = []
+        # for shape in self.shape_coords:
+            # pts = self.rotate(shape, self.momentum[2], self.coord_current[0:2])
+            # new_shapes.append(pts)
+        # self.shapes = new_shapes
         self.coord_current[0] += move[0]
         self.coord_current[1] += move[1]
         self.coord_current[2] += move[2]
-        for i, a in enumerate(self.anchors): #Todo calc rotation
-            self.anchors[i][0] += move[0]
-            self.anchors[i][1] += move[1]
+        # for i, a in enumerate(self.anchors): #Todo calc rotation
+            # self.anchors[i][0] += move[0]
+            # self.anchors[i][1] += move[1]
             
     def Reset(self):
         diff = [0,0]
@@ -261,12 +277,9 @@ if __name__ == '__main__':
 
     vp = Viewport()
 
-
-    # circle = c.create_oval(60,60,210,210)
     pcb = Board()
     pcb.Load()
 
-    
     nets = Nets()
     nets.Load(pcb.net)
     
@@ -280,20 +293,6 @@ if __name__ == '__main__':
     
     vp.Load(nets)
     vp.Draw(footprints, nets)
-    
-    def move():
-        for fp in footprints:
-            fp.Move()
-            # nets.Draw(footprints)
-            
-        # nets.Calc(footprints)
-        
-        # window.after(330, move)
-    def reset():
-        for fp in footprints:
-            fp.Reset()
-    # button = tk.Button(text="Reset", master=optFrame, command=reset)
-    # button.grid(row=1, column=5, sticky="nsew")
-    move()
+
 
     vp.Start()
