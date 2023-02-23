@@ -186,8 +186,10 @@ class Footprint:
     def __init__(self, mod = False):
         self.coord_initial = [0,0,0]
         self.coord_current = [0,0,0]
+        self.shapes_initial = []
         self.shapes = []
         self.shape_fills = []
+        self.anchors_initial = []
         self.anchors = []
         self.nets = []
         self.force = 1
@@ -221,6 +223,7 @@ class Footprint:
             key = "{},{}".format(polypoints[i][0],polypoints[i][1])
             polypoints.append(points[key])
             
+        self.shapes_initial.append(polypoints)
         self.shapes.append(polypoints)
         self.shape_fills.append('red')
         
@@ -232,10 +235,12 @@ class Footprint:
             polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)), (pad.at[1] + (pad.size[1] / 2.0))])
             polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)), (pad.at[1] + (pad.size[1] / 2.0))])
             self.shapes.append(polypoints)
+            self.shapes_initial.append(polypoints)
             self.shape_fills.append('grey')
             self.nets.append(pad.net)
             # self.anchors.append([(pad.at[0] + self.coord_initial[0]) * 1, (pad.at[1] + self.coord_initial[1]) * 1])
             self.anchors.append([pad.at[0], pad.at[1]])
+            self.anchors_initial.append([pad.at[0], pad.at[1]])
             
         # self.Move(self.coord_initial)
         
@@ -267,19 +272,20 @@ class Footprint:
         self.anchors = self.rotate(self.anchors, self.momentum[2], [0,0])
             
     def Reset(self):
-        diff = [0,0]
-        # print(self.coord)
-        diff[0] = -1 * (self.coord[0] - self.coord_initial[0])
-        diff[1] = -1 * (self.coord[1] - self.coord_initial[1])
-        for shape in self.shapes:
-            self.c.move(shape, diff[0] * self.zoom, diff[1] * self.zoom)
-        anchors = []
-        for anchor in self.anchors:
-            anchor[0] += diff[0]
-            anchor[1] += diff[1]
-            anchors.append(anchor)
-        self.anchors = anchors
-        self.coord = self.coord_initial
+        # diff = [0,0]
+        # # print(self.coord)
+        # diff[0] = -1 * (self.coord[0] - self.coord_initial[0])
+        # diff[1] = -1 * (self.coord[1] - self.coord_initial[1])
+        # for shape in self.shapes:
+            # self.c.move(shape, diff[0] * self.zoom, diff[1] * self.zoom)
+        # anchors = []
+        # for anchor in self.anchors:
+            # anchor[0] += diff[0]
+            # anchor[1] += diff[1]
+            # anchors.append(anchor)
+        self.anchors = self.anchors_initial
+        self.coord_current = self.coord_initial
+        self.shapes = self.shapes_initial
         self.momentum = [0,0,0]
 
 
