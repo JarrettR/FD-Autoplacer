@@ -89,7 +89,7 @@ class Viewport:
             fp.Move()
             # nets.Draw(footprints)
             
-        # nets.Calc(footprints)
+        nets.Calc(footprints)
         
         self.Draw(self.footprints, self.nets)
         
@@ -147,13 +147,16 @@ class Nets:
                 for e, conn in enumerate(self.netnames[net]):
                     if i != e:
                         pos1 = self.netnames[net][i]
-                        xy1 = footprints[pos1[0]].anchors[pos1[1]]
                         pos2 = self.netnames[net][e]
-                        xy2 = footprints[pos2[0]].anchors[pos2[1]]
-                        
-                        force = self.calc_spring(xy1, xy2) 
-                        footprints[pos1[0]].momentum[0] += force[0]
-                        footprints[pos1[0]].momentum[1] += force[1]
+                        if pos1[0] != pos2[0]:
+                            # xy1 = footprints[pos1[0]].anchors[pos1[1]] + footprints[pos1[0]].coor
+                            xy1 = [sum(x) for x in zip(footprints[pos1[0]].anchors[pos1[1]], footprints[pos1[0]].coord_current)]
+                            xy2 = [sum(x) for x in zip(footprints[pos2[0]].anchors[pos2[1]], footprints[pos2[0]].coord_current)]
+                            # xy2 = footprints[pos2[0]].anchors[pos2[1]]
+                            
+                            force = self.calc_spring(xy1, xy2) 
+                            footprints[pos1[0]].momentum[0] += force[0]
+                            footprints[pos1[0]].momentum[1] += force[1]
                         
         for i, fp in enumerate(footprints): 
             footprints[i].momentum[0] *= DAMPING
