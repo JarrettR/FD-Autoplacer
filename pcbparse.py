@@ -43,7 +43,7 @@ class Board(object):
     def __init__(self):
         self.Clear()
         currentdir = os.path.dirname(os.path.realpath(__file__))
-        self.filename_default = os.path.join(currentdir, 'tests', 'simple.kicad_pcb')
+        self.filename_default = os.path.join(currentdir, 'tests', 'complicated.kicad_pcb')
         
     def Load(self, filename = None):
         
@@ -179,5 +179,6 @@ class Board(object):
 
         for i_m, m in enumerate(self.module):
             for i_p, p in enumerate(m.pad):
-                net_num = int(p.net[0])
-                self.net[net_num][2] += 1
+                if len(p.net) > 0:
+                    net_num = int(p.net[0])
+                    self.net[net_num][2] += 1

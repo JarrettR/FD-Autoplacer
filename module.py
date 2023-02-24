@@ -230,15 +230,6 @@ class Module(object):
                 pad.From_PCB(item)
                 self.pad.append(pad)
 
-            if item[0] == 'model':
-                model = item[1] + ';'
-                #offset
-                model += item[2][1][1] + ',' + item[2][1][2] + ',' + item[2][1][3] + ';'
-                #scale
-                model += item[3][1][1] + ',' + item[3][1][2] + ',' + item[3][1][3] + ';'
-                #rotate
-                model += item[4][1][1] + ',' + item[4][1][2] + ',' + item[4][1][3] + ';'
-                self.model = model
 
             # if item[0] == 'zone':
             # if item[0] == 'group':

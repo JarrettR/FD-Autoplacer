@@ -85,7 +85,8 @@ class Viewport:
                 poly = []
                 for pts in fp.shapes[i]:
                     poly.append([(pts[0] + move[0]) * z, (pts[1] + move[1]) * z])
-                self.tk_shapes.append(self.c.create_polygon(*poly, fill=fp.shape_fills[i]))
+                if len(poly) > 0:
+                    self.tk_shapes.append(self.c.create_polygon(*poly, fill=fp.shape_fills[i]))
                 i += 1
         
         #Nets
@@ -170,8 +171,8 @@ class Nets:
         distance = math.sqrt(dx ** 2 + dy ** 2)
         if distance == 0:
             return [0, 0]
-        force = ELECTRON_CONSTANT * distance
-        return [force * dx / distance, force * dy / distance]
+        force = ELECTRON_CONSTANT # * distance
+        return [force * dx / (distance ** 2), force * dy / (distance ** 2)]
     
     def calc_spring(self, pos1, pos2):
         dx = pos2[0] - pos1[0]
@@ -179,7 +180,7 @@ class Nets:
         distance = math.sqrt(dx ** 2 + dy ** 2)
         if distance == 0:
             return [0, 0]
-        force = SPRING_CONSTANT * distance
+        force = SPRING_CONSTANT # * distance
         return [force * dx / distance, force * dy / distance]
     
     def calc_torque(self, force, xy):
@@ -220,8 +221,9 @@ class Nets:
     def Associate(self, footprints):
         for i_f, fp in enumerate(footprints):
             for i_p, pad in enumerate(fp.nets):
-                if pad[1] in self.netnames:
-                    self.netnames[pad[1]].append([i_f, i_p])
+                if len(pad) > 1:
+                    if pad[1] in self.netnames:
+                        self.netnames[pad[1]].append([i_f, i_p])
         
 class Footprint:
     def __init__(self, mod = False):
@@ -255,9 +257,15 @@ class Footprint:
                     
                 #Conversion of mixed up start/end points to a polygon, by way of dictionary entries
                 key = "{},{}".format(line.start[0],line.start[1])
-                if "{},{}".format(line.start[0],line.start[1]) in points.keys():
+                if key in points.keys():
                     key = "{},{}".format(line.end[0],line.end[1])
-                    line.end = line.start
+                    if key in points.keys():
+                        temp = points[key]
+                        points[key] = line.start
+                        key = "{},{}".format(temp[0],temp[1])
+                        points[key] = line.end
+                    else:
+                        line.end = line.start
                 points[key] = line.end
             
         for i in range(len(points)):
