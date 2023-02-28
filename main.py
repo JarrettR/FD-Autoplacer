@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter.scrolledtext import ScrolledText
 import math
 
 from pcbparse import Board
@@ -24,34 +25,21 @@ class Viewport:
         window.columnconfigure([0, 1], minsize=25, weight=1)
         
         optFrame = tk.Frame(master=window, height=50,relief=tk.RAISED,borderwidth=1)
-        # optFrame.pack(fill=tk.X, side=tk.BOTTOM)
         optFrame.grid(row=1, column=0, sticky="nsew", columnspan=2)
         
-        netFrame = tk.Frame(master=window, width=250,height=600,relief=tk.SUNKEN,borderwidth=1)
-        # self.netFrame.pack(fill=tk.Y, side=tk.RIGHT)
+        netFrame = tk.Frame(master=window, width=220,height=600,relief=tk.SUNKEN,borderwidth=1)
         netFrame.grid(row=0, column=1, sticky="nse")
         netFrame.rowconfigure([0], minsize=25, weight=1)
-        netFrame.columnconfigure([0, 1], minsize=25, weight=1)
+        netFrame.columnconfigure([0, 1], weight=1)
         netFrame.grid_propagate(0)
         
         defaultbg = window.cget('bg')
-        from tkinter.scrolledtext import ScrolledText
-        # self.netCanvas = tk.Canvas(netFrame,width=200,height=600,scrollregion=(0,0,200,800), bg='red')
-        self.netCanvas = ScrolledText(netFrame,width=200,height=600, bg=defaultbg)
+        self.netCanvas = ScrolledText(netFrame,width=200,height=600, bg=defaultbg, cursor="arrow")
         
-        # self.netCanvas.configure(scrollregion=self.netCanvas.bbox("all"))
-        # self.netCanvas.pack(fill=tk.BOTH, expand=True)
         self.netCanvas.grid(row=0, column=1, sticky="nw")
-        # scrollbar = tk.Scrollbar(master=netFrame, orient='vertical', command=self.netCanvas.yview)
-        
-        # scrollbar.pack(side=tk.RIGHT,fill=tk.Y)
-        # scrollbar.grid(row=0, column=1, sticky="nse")
-        # scrollbar.config(command=self.netCanvas.yview)
-        # self.netCanvas.config(yscrollcommand=scrollbar.set)
-        # self.netCanvas.pack_propagate(0)
+
         c = tk.Canvas(window, height=600,width=600)
         
-        # c.pack(fill=tk.Y, side=tk.LEFT)
         c.grid(row=0, column=0, sticky="nsew")
 
 
@@ -96,18 +84,11 @@ class Viewport:
         for net in enumerate(nets.netnames):
             self.tk_nets.append([net,tk.IntVar(value=1)])
             netlabel = tk.Checkbutton(text=net, master=self.netCanvas, justify=tk.LEFT, variable=self.tk_nets[activenets][1])
-            # netlabel.pack(fill=tk.X, side=tk.TOP)
             
             self.netCanvas.window_create('end', window=netlabel)
             self.netCanvas.insert('end', '\n')
-            # netlabel.grid(row=1, column=5, sticky="nsew")
             activenets += 1
-        for i in range(40):
-            netlabel = tk.Checkbutton(text=str(i), master=self.netCanvas, justify=tk.LEFT)
-            # netlabel.pack(fill=tk.X, side=tk.TOP)
-            self.netCanvas.window_create('end', window=netlabel)
-            self.netCanvas.insert('end', '\n')
-        
+
         self.netCanvas['state'] = 'disabled'
         
     def Draw(self, footprints, nets, activenets):
