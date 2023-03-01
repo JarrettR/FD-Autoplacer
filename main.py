@@ -4,6 +4,7 @@ import math
 
 from pcbparse import Board
 
+import cProfile
 
 ELECTRON_CONSTANT = 0.002
 SPRING_CONSTANT = 0.0005
@@ -12,7 +13,7 @@ DAMPING = 0.9
     
 class Viewport:
     def __init__(self):
-        self.zoom = 5
+        self.zoom = 3
         self.pan = [0,0]
         self.tk_shapes = []
         self.tk_nets = []
@@ -95,9 +96,10 @@ class Viewport:
         self.footprints = footprints
         self.nets = nets
         z = self.zoom
+        self.c.delete("all")
         #Footprints
-        for shape in self.tk_shapes:
-            self.c.delete(shape)
+        # for shape in self.tk_shapes:
+            # self.c.delete(shape)
         for fp in footprints:
             move = fp.coord_current
             i = 0
@@ -110,8 +112,8 @@ class Viewport:
                 i += 1
         
         #Nets
-        for line in self.tk_lines:
-            self.c.delete(line)
+        # for line in self.tk_lines:
+            # self.c.delete(line)
         for net in activenets:
             # print(net)
             for i, conn in enumerate(nets.netnames[net]):
@@ -126,7 +128,7 @@ class Viewport:
                     xy2[1] += footprints[pos2[0]].coord_current[1]
                     self.tk_lines.append(self.c.create_line(xy1[0] * z,xy1[1] * z,xy2[0] * z,xy2[1] * z))
         
-    def Animate(self):
+    def Animate_calc(self):
         global ELECTRON_CONSTANT
         global SPRING_CONSTANT
         global DAMPING
@@ -157,6 +159,10 @@ class Viewport:
         
         self.Draw(self.footprints, self.nets,activenets)
         
+            
+    def Animate(self):
+        # cProfile.runctx('self.Animate_calc()', globals(), locals())
+        self.Animate_calc()
         try:
             speed = int(self.speed.get())
         except:
@@ -186,6 +192,7 @@ class Nets:
                 self.netnames[nets[i][1]] = []
     
     def calc_electron(self, pos1, pos2):
+        # return [0,0]
         dx = pos2[0] - pos1[0]
         dy = pos2[1] - pos1[1]
         distance = math.sqrt(dx ** 2 + dy ** 2)
@@ -195,6 +202,7 @@ class Nets:
         return [force * dx / (distance ** 2), force * dy / (distance ** 2)]
     
     def calc_spring(self, pos1, pos2):
+        # return [0,0]
         dx = pos2[0] - pos1[0]
         dy = pos2[1] - pos1[1]
         distance = math.sqrt(dx ** 2 + dy ** 2)
@@ -204,6 +212,7 @@ class Nets:
         return [force * dx / distance, force * dy / distance]
     
     def calc_torque(self, force, xy):
+        # return 0
         distance = math.sqrt(xy[0] ** 2 + xy[1] ** 2)
         
         torque = xy[0]*force[1] - xy[1]*force[0]
@@ -257,6 +266,7 @@ class Footprint:
         self.nets = []
         self.force = 1
         self.momentum = [0,0,0]
+        self.locked = False
         
         if mod != False:
             self.Load(mod)
@@ -330,7 +340,7 @@ class Footprint:
             move = self.momentum
         new_shapes = []
         for shape in self.shapes:
-            pts = self.rotate(shape, self.momentum[2], [0,0]) # self.coord_current[0:2])
+            pts = self.rotate(shape, move[2], [0,0]) # self.coord_current[0:2])
             new_shapes.append(pts)
         self.shapes = new_shapes
         self.coord_current[0] += move[0]
