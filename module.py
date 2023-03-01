@@ -150,7 +150,10 @@ class Module(object):
                 self.tstamp = item[1]
             
             if item[0] == 'at':
-                self.at += [float(item[1]),float(item[2])]
+                self.at = [float(item[1]),float(item[2])]
+                if len(item) > 3:
+                    self.at.append(float(item[3]))
+                
                 
             if item[0] == 'descr':
                 self.descr = item[1]

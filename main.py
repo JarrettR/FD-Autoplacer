@@ -10,7 +10,7 @@ from pcbparse import Board
 ELECTRON_CONSTANT = 0.002
 SPRING_CONSTANT = 0.0005
 TORQUE_CONSTANT = 2.0
-DAMPING = 0.9
+DAMPING = 0.99
     
 class Viewport:
     def __init__(self):
@@ -106,7 +106,8 @@ class Viewport:
             i = 0
             while i < len(fp.shapes):
                 poly = []
-                for pts in fp.shapes[i]:
+                shape = fp.rotate(fp.shapes[i], move[2], [0,0])
+                for pts in shape:
                     poly.append([(pts[0] + move[0]) * z, (pts[1] + move[1]) * z])
                 if len(poly) > 0:
                     self.tk_shapes.append(self.c.create_polygon(*poly, fill=fp.shape_fills[i]))
@@ -345,6 +346,7 @@ class Footprint:
                 at.append((pad.at[0] + (pad.size[0] / 2.0)))
                 at.append((pad.at[1] + (pad.size[1] / 2.0)))
                 self.holes.append(at)
+                self.holes_initial.append(at)
             self.nets.append(pad.net)
             self.anchors.append([pad.at[0], pad.at[1]])
             self.anchors_initial.append([pad.at[0], pad.at[1]])
@@ -367,20 +369,21 @@ class Footprint:
     def Move(self, move = False):
         if move is False:
             move = self.momentum
-        new_shapes = []
-        for shape in self.shapes:
-            pts = self.rotate(shape, move[2], [0,0]) # self.coord_current[0:2])
-            new_shapes.append(pts)
-        self.shapes = new_shapes
+        # new_shapes = []
+        # for shape in self.shapes:
+            # pts = self.rotate(shape, move[2], [0,0]) # self.coord_current[0:2])
+            # new_shapes.append(pts)
+        # self.shapes = new_shapes
         self.coord_current[0] += move[0]
         self.coord_current[1] += move[1]
         self.coord_current[2] += move[2]
-        self.anchors = self.rotate(self.anchors, self.momentum[2], [0,0])
+        self.anchors = self.rotate(self.anchors, move[2], [0,0])
             
     def Reset(self):
         self.anchors = self.anchors_initial.copy()
         self.coord_current = self.coord_initial.copy()
         self.shapes = self.shapes_initial.copy()
+        self.holes = self.holes_initial.copy()
         self.momentum = [0,0,0]
 
 
