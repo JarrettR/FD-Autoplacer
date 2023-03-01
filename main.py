@@ -230,9 +230,10 @@ class Nets:
         for i1, fp1 in enumerate(footprints):
             for i2, fp2 in enumerate(footprints):
                 if i1 != i2:
-                    force = self.calc_electron(fp1.coord_current, fp2.coord_current) 
-                    footprints[i1].momentum[0] -= force[0]
-                    footprints[i1].momentum[1] -= force[1]
+                    if footprints[i1].locked == False:
+                        force = self.calc_electron(fp1.coord_current, fp2.coord_current) 
+                        footprints[i1].momentum[0] -= force[0]
+                        footprints[i1].momentum[1] -= force[1]
                     
         for net in activenets:
             for i, conn in enumerate(self.netnames[net]):
@@ -241,14 +242,15 @@ class Nets:
                         pos1 = self.netnames[net][i]
                         pos2 = self.netnames[net][e]
                         if pos1[0] != pos2[0]:
-                            xy1 = [sum(x) for x in zip(footprints[pos1[0]].anchors[pos1[1]], footprints[pos1[0]].coord_current)]
-                            xy2 = [sum(x) for x in zip(footprints[pos2[0]].anchors[pos2[1]], footprints[pos2[0]].coord_current)]
-                            
-                            force = self.calc_spring(xy1, xy2)
-                            torque = self.calc_torque(force, footprints[pos1[0]].anchors[pos1[1]])
-                            footprints[pos1[0]].momentum[0] += force[0]
-                            footprints[pos1[0]].momentum[1] += force[1]
-                            footprints[pos1[0]].momentum[2] += torque
+                            if footprints[pos1[0]].locked == False:
+                                xy1 = [sum(x) for x in zip(footprints[pos1[0]].anchors[pos1[1]], footprints[pos1[0]].coord_current)]
+                                xy2 = [sum(x) for x in zip(footprints[pos2[0]].anchors[pos2[1]], footprints[pos2[0]].coord_current)]
+                                
+                                force = self.calc_spring(xy1, xy2)
+                                torque = self.calc_torque(force, footprints[pos1[0]].anchors[pos1[1]])
+                                footprints[pos1[0]].momentum[0] += force[0]
+                                footprints[pos1[0]].momentum[1] += force[1]
+                                footprints[pos1[0]].momentum[2] += torque
                         
         for i, fp in enumerate(footprints): 
             footprints[i].momentum[0] *= DAMPING
@@ -280,6 +282,7 @@ class Footprint:
             self.Load(mod)
         
     def Load(self, mod):
+        self.locked = mod.locked
         self.coord_initial = mod.at
         if len(self.coord_initial) == 2:
             self.coord_initial.append(0)
@@ -310,6 +313,7 @@ class Footprint:
             key = "{},{}".format(polypoints[i][0],polypoints[i][1])
             polypoints.append(points[key])
             
+        # polypoints = self.rotate(polypoints, self.coord_current[2], [0,0])
         self.shapes_initial.append(polypoints)
         self.shapes.append(polypoints)
         self.shape_fills.append('red')
@@ -317,10 +321,13 @@ class Footprint:
         #pads
         for pad in mod.pad:
             polypoints = []
+            
+            # pad.at = self.rotate([pad.at], self.coord_current[2], [0,0])[0]
             polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)), (pad.at[1] - (pad.size[1] / 2.0))])
             polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)), (pad.at[1] - (pad.size[1] / 2.0))])
             polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)), (pad.at[1] + (pad.size[1] / 2.0))])
             polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)), (pad.at[1] + (pad.size[1] / 2.0))])
+            # polypoints = self.rotate(polypoints, self.coord_current[2], [0,0])
             self.shapes.append(polypoints)
             self.shapes_initial.append(polypoints)
             self.shape_fills.append('grey')

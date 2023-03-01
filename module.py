@@ -124,6 +124,8 @@ class Module(object):
         self.symbol = pcblist[1]
 
         for item in pcblist[2:]:
+            if isinstance(item, str):
+                item = [item]
 
 
             if item[0] == 'version':
