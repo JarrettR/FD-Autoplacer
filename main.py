@@ -9,7 +9,7 @@ from pcbparse import Board
 
 ELECTRON_CONSTANT = 0.002
 SPRING_CONSTANT = 0.0005
-TORQUE_CONSTANT = 1.0
+TORQUE_CONSTANT = 2.0
 DAMPING = 0.9
     
 class Viewport:
@@ -111,6 +111,11 @@ class Viewport:
                 if len(poly) > 0:
                     self.tk_shapes.append(self.c.create_polygon(*poly, fill=fp.shape_fills[i]))
                 i += 1
+            for hole in fp.holes:
+                #[at, size]
+                pts = [(hole[0] + move[0]) * z, (hole[1] + move[1]) * z, (hole[2] + move[0]) * z, (hole[3] + move[1]) * z]
+                self.c.create_oval(*pts, fill="grey")
+                # self.c.create_circle(hole.radius, fill="black")
         
         #Nets
         # for line in self.tk_lines:
@@ -132,6 +137,7 @@ class Viewport:
     def Animate_calc(self):
         global ELECTRON_CONSTANT
         global SPRING_CONSTANT
+        global TORQUE_CONSTANT
         global DAMPING
         try:
             DAMPING = float(self.damping.get())
@@ -271,6 +277,8 @@ class Footprint:
         self.shapes_initial = []
         self.shapes = []
         self.shape_fills = []
+        self.holes = []
+        self.holes_initial = []
         self.anchors_initial = []
         self.anchors = []
         self.nets = []
@@ -320,17 +328,23 @@ class Footprint:
         
         #pads
         for pad in mod.pad:
-            polypoints = []
-            
-            # pad.at = self.rotate([pad.at], self.coord_current[2], [0,0])[0]
-            polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)), (pad.at[1] - (pad.size[1] / 2.0))])
-            polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)), (pad.at[1] - (pad.size[1] / 2.0))])
-            polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)), (pad.at[1] + (pad.size[1] / 2.0))])
-            polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)), (pad.at[1] + (pad.size[1] / 2.0))])
-            # polypoints = self.rotate(polypoints, self.coord_current[2], [0,0])
-            self.shapes.append(polypoints)
-            self.shapes_initial.append(polypoints)
-            self.shape_fills.append('grey')
+            if pad.attribute == "smd":
+                polypoints = []
+                
+                # pad.at = self.rotate([pad.at], self.coord_current[2], [0,0])[0]
+                polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)), (pad.at[1] - (pad.size[1] / 2.0))])
+                polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)), (pad.at[1] - (pad.size[1] / 2.0))])
+                polypoints.append([(pad.at[0] + (pad.size[0] / 2.0)), (pad.at[1] + (pad.size[1] / 2.0))])
+                polypoints.append([(pad.at[0] - (pad.size[0] / 2.0)), (pad.at[1] + (pad.size[1] / 2.0))])
+                # polypoints = self.rotate(polypoints, self.coord_current[2], [0,0])
+                self.shapes.append(polypoints)
+                self.shapes_initial.append(polypoints)
+                self.shape_fills.append('grey')
+            else:
+                at = [(pad.at[0] - (pad.size[0] / 2.0)), (pad.at[1] - (pad.size[1] / 2.0))]
+                at.append((pad.at[0] + (pad.size[0] / 2.0)))
+                at.append((pad.at[1] + (pad.size[1] / 2.0)))
+                self.holes.append(at)
             self.nets.append(pad.net)
             self.anchors.append([pad.at[0], pad.at[1]])
             self.anchors_initial.append([pad.at[0], pad.at[1]])
