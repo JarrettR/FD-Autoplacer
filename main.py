@@ -40,7 +40,7 @@ class Viewport:
         
         self.netCanvas.grid(row=0, column=1, sticky="nw")
 
-        c = tk.Canvas(window, height=600,width=600)
+        c = tk.Canvas(window, height=600,width=600, bg="black")
         
         c.grid(row=0, column=0, sticky="nsew")
 
@@ -127,7 +127,7 @@ class Viewport:
                     xy2 = footprints[pos2[0]].anchors[pos2[1]].copy()
                     xy2[0] += footprints[pos2[0]].coord_current[0]
                     xy2[1] += footprints[pos2[0]].coord_current[1]
-                    self.tk_lines.append(self.c.create_line(xy1[0] * z,xy1[1] * z,xy2[0] * z,xy2[1] * z))
+                    self.tk_lines.append(self.c.create_line(xy1[0] * z,xy1[1] * z,xy2[0] * z,xy2[1] * z, fill="white"))
         
     def Animate_calc(self):
         global ELECTRON_CONSTANT
@@ -217,7 +217,7 @@ class Nets:
         if distance == 0:
             return [0, 0]
         force = SPRING_CONSTANT # * distance
-        return [force * dx / distance, force * dy / distance]
+        return [force * dx, force * dy]
     
     def calc_torque(self, force, xy):
         # return 0
