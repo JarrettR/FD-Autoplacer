@@ -1,10 +1,11 @@
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 import math
+import time
 
 from pcbparse import Board
 
-import cProfile
+# import cProfile
 
 ELECTRON_CONSTANT = 0.002
 SPRING_CONSTANT = 0.0005
@@ -67,7 +68,7 @@ class Viewport:
         entry = tk.Entry(master=optFrame, text=self.attraction)
         entry.grid(row=0, column=3)
         
-        self.repulsion = tk.StringVar(value="0.002")
+        self.repulsion = tk.StringVar(value="0.02")
         label = tk.Label(text="Repulsion", master=optFrame)
         label.grid(row=1, column=2, sticky="nsew")
         entry = tk.Entry(master=optFrame, text=self.repulsion)
@@ -161,6 +162,7 @@ class Viewport:
         
             
     def Animate(self):
+        startTime = time.time_ns()
         # cProfile.runctx('self.Animate_calc()', globals(), locals())
         self.Animate_calc()
         try:
@@ -169,7 +171,13 @@ class Viewport:
             speed = 1
         if speed == 0:
             speed = 1
-        self.w.after(int(1000 / speed), self.Animate)
+            
+        endTime = time.time_ns()
+        totalTime = endTime - startTime
+        delayUS = (1000000.0 / speed) - totalTime
+        if delayUS < 10000.0:
+            delayUS = 10000
+        self.w.after(int(delayUS / 1000), self.Animate)
         
     def Reset(self):
         for fp in self.footprints:
