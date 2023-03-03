@@ -2,40 +2,8 @@ import sys, io, os
 
 from parser_base import ParserBase
 
-# from .arc import Arc
-# from .circle import Circle
-# from .curve import Curve
-# from .layers import Layers
-# from .line import Line
-# from .metadata import Metadata
+
 from module import Module
-# from .pad import Pad
-# from .poly import Poly
-# from .segment import Segment
-# from .text import Text
-# from .via import Via
-# from .zone import Zone
-
-#https://github.com/KiCad/kicad-source-mirror/blob/93466fa1653191104c5e13231dfdc1640b272777/pcbnew/plugins/kicad/pcb_parser.cpp#L533
-
-# kicad_pcb
-# version
-# host
-# general
-# page
-# title_block
-# layers
-# setup
-# net
-# net_class
-# module
-# dimension
-# gr_line
-# gr_arc
-# gr_text
-# segment
-# via
-# zone
 
 
 class Board(object):
