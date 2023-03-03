@@ -32,7 +32,7 @@ The idea has been bouncing around in my head for a few months. I also have a thi
 - Clean up the hacks that require editing the code for each project: Better file input, automatic zoom and pan
 - Respect the board outline layer, so components can bounce around inside it
 - Turn this into a KiCad module so that it can be launched from within
-- Exporting footprint positions back into a PCB file. Can rewrite the PCB file, but this is also straightforward using the KiCad API
+- Exporting footprint positions back into a PCB file. Rewriting the PCB file is one strategy, but the KiCad API is straightforward, too
 - Fix the many edge cases that break the project
 - Make a PCB with zero footprints that have right angles
 - Come up with more fun examples and animations - Please submit them in Issues!
