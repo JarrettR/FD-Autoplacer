@@ -99,8 +99,6 @@ class Viewport:
         z = self.zoom
         self.c.delete("all")
         #Footprints
-        # for shape in self.tk_shapes:
-            # self.c.delete(shape)
         for fp in footprints:
             move = fp.coord_current
             i = 0
@@ -113,24 +111,21 @@ class Viewport:
                     self.tk_shapes.append(self.c.create_polygon(*poly, fill=fp.shape_fills[i]))
                 i += 1
             for hole in fp.holes:
-                #[at, size]
-                pts = [(hole[0] + move[0]) * z, (hole[1] + move[1]) * z, (hole[2] + move[0]) * z, (hole[3] + move[1]) * z]
+                pts = fp.rotate([[hole[0],hole[1]],[hole[2],hole[3]]], move[2], [0,0])
+                pts = [(pts[0][0] + move[0]) * z, (pts[0][1] + move[1]) * z, (pts[1][0] + move[0]) * z, (pts[1][1] + move[1]) * z]
                 self.c.create_oval(*pts, fill="grey")
-                # self.c.create_circle(hole.radius, fill="black")
         
         #Nets
-        # for line in self.tk_lines:
-            # self.c.delete(line)
         for net in activenets:
             # print(net)
             for i, conn in enumerate(nets.netnames[net]):
                 for e in range(i):
                     pos1 = nets.netnames[net][i]
-                    xy1 = footprints[pos1[0]].anchors[pos1[1]].copy()
+                    xy1 = footprints[pos1[0]].anchors_rotated[pos1[1]].copy()
                     xy1[0] += footprints[pos1[0]].coord_current[0]
                     xy1[1] += footprints[pos1[0]].coord_current[1]
                     pos2 = nets.netnames[net][e]
-                    xy2 = footprints[pos2[0]].anchors[pos2[1]].copy()
+                    xy2 = footprints[pos2[0]].anchors_rotated[pos2[1]].copy()
                     xy2[0] += footprints[pos2[0]].coord_current[0]
                     xy2[1] += footprints[pos2[0]].coord_current[1]
                     self.tk_lines.append(self.c.create_line(xy1[0] * z,xy1[1] * z,xy2[0] * z,xy2[1] * z, fill="white"))
@@ -250,11 +245,12 @@ class Nets:
                         pos2 = self.netnames[net][e]
                         if pos1[0] != pos2[0]:
                             if footprints[pos1[0]].locked == False:
-                                xy1 = [sum(x) for x in zip(footprints[pos1[0]].anchors[pos1[1]], footprints[pos1[0]].coord_current)]
-                                xy2 = [sum(x) for x in zip(footprints[pos2[0]].anchors[pos2[1]], footprints[pos2[0]].coord_current)]
+
+                                xy1 = [sum(x) for x in zip(footprints[pos1[0]].anchors_rotated[pos1[1]], footprints[pos1[0]].coord_current)]
+                                xy2 = [sum(x) for x in zip(footprints[pos2[0]].anchors_rotated[pos2[1]], footprints[pos2[0]].coord_current)]
                                 
                                 force = self.calc_spring(xy1, xy2)
-                                torque = self.calc_torque(force, footprints[pos1[0]].anchors[pos1[1]])
+                                torque = self.calc_torque(force, footprints[pos1[0]].anchors_rotated[pos1[1]])
                                 footprints[pos1[0]].momentum[0] += force[0]
                                 footprints[pos1[0]].momentum[1] += force[1]
                                 footprints[pos1[0]].momentum[2] += torque
@@ -282,6 +278,7 @@ class Footprint:
         self.holes_initial = []
         self.anchors_initial = []
         self.anchors = []
+        self.anchors_rotated = []
         self.nets = []
         self.force = 1
         self.momentum = [0,0,0]
@@ -351,6 +348,8 @@ class Footprint:
             self.anchors.append([pad.at[0], pad.at[1]])
             self.anchors_initial.append([pad.at[0], pad.at[1]])
             
+        self.anchors_rotated = self.rotate(self.anchors, self.coord_current[2], [0,0])
+            
         
     def rotate(self, points, angle, center):
         angle = math.radians(angle)
@@ -377,7 +376,7 @@ class Footprint:
         self.coord_current[0] += move[0]
         self.coord_current[1] += move[1]
         self.coord_current[2] += move[2]
-        self.anchors = self.rotate(self.anchors, move[2], [0,0])
+        self.anchors_rotated = self.rotate(self.anchors, self.coord_current[2], [0,0])
             
     def Reset(self):
         self.anchors = self.anchors_initial.copy()
