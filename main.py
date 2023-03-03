@@ -21,6 +21,7 @@ class Viewport:
         self.tk_lines = []
         
         window = tk.Tk()
+        window.winfo_toplevel().title("Force-Directed Autoplacer")
 
 
         window.rowconfigure([0, 1], minsize=25, weight=1)
