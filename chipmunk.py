@@ -60,27 +60,42 @@ class Footprint:
         # drawings = fppcb.GetDrawings()
         points = {}
         polypoints = []
+        # print(gi)
         for obj in gi:
             if obj.GetLayerName() == "F.Courtyard":
                 line = obj.GetConnectionPoints()
+                if len(line) == 0: 
+                    continue
                 line_start = kicad_to_mm(line[0])
                 line_end = kicad_to_mm(line[1])
+                # print(obj.GetParentAsString(), line_start, line_end)
                 if len(polypoints) == 0:
                     polypoints.append(line_start)
                     
                 #Conversion of mixed up start/end points to a polygon, by way of dictionary entries
                 key = "{},{}".format(line_start[0],line_start[1])
+                # print(key)
                 if key in points.keys():
                     key = "{},{}".format(line_end[0],line_end[1])
+                    # print("Alt: ", key)
                     if key in points.keys():
+                        # print("Extra alt")
+                        # print(points)
                         temp = points[key]
                         points[key] = line_start
                         key = "{},{}".format(temp[0],temp[1])
+                        # print(key)
+                        if key in points.keys(): # With enough nesting, you have recursion*
+                            temp = points[key]
+                            points[key] = line_start
+                            key = "{},{}".format(temp[0],temp[1])
                         points[key] = line_end
+                        # print(points)
                     else:
                         line_end = line_start
                 points[key] = line_end
             
+        # print(points)
         for i in range(len(points)):
             key = "{},{}".format(polypoints[i][0],polypoints[i][1])
             polypoints.append(points[key])
@@ -112,11 +127,12 @@ def add_footprints(space, pcb):
     for fp in footprints:
         footprint = Footprint(pcb, fp)
         # print(footprint.points)
+        if len(footprint.shapes) > 0:
 
-        a = pymunk.Poly(space.static_body, footprint.shapes)
-        a.friction = 0.5
-        shapes.append(a)
-            
+            a = pymunk.Poly(space.static_body, footprint.shapes)
+            a.friction = 0.5
+            shapes.append(a)
+                
     return shapes
             
     
@@ -146,6 +162,7 @@ def main(pcb):
     
     fp = add_footprints(space, pcb)
     space.add(*fp)
+    # return
 
     while running:
         for event in pygame.event.get():
@@ -197,7 +214,7 @@ def main(pcb):
 
 
 if __name__ == "__main__":
-    pcb = pcbnew.LoadBoard("tests\\simple.kicad_pcb")
+    pcb = pcbnew.LoadBoard("tests\\v3.kicad_pcb")
     # print(pcb.GetFootprints())
     
     sys.exit(main(pcb))

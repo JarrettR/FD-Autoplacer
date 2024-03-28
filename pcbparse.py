@@ -11,7 +11,7 @@ class Board(object):
     def __init__(self):
         self.Clear()
         currentdir = os.path.dirname(os.path.realpath(__file__))
-        self.filename_default = os.path.join(currentdir, 'tests', 'leds.kicad_pcb')
+        self.filename_default = os.path.join(currentdir, 'tests', 'sad-controller.kicad_pcb')
         
     def Load(self, filename = None):
         
