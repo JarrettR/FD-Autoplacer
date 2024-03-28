@@ -67,6 +67,7 @@ class Footprint:
         for obj in gi:
             if obj.GetLayerName() == "F.Courtyard":
                 line = obj.GetConnectionPoints()
+                self.centre = kicad_to_mm(obj.GetCenter())
                 if len(line) == 0: 
                     continue
                 line_start = kicad_to_mm(line[0])
@@ -130,6 +131,7 @@ def build_edge_cuts(space, pcb):
         
 def add_footprints(space, pcb):
     primitives = []
+    bodies = []
     shapes = []
     footprints = pcb.GetFootprints()
     for fp in footprints:
@@ -137,11 +139,22 @@ def add_footprints(space, pcb):
         # print(footprint.points)
         if len(footprint.shapes) > 0:
 
-            a = pymunk.Poly(space.static_body, footprint.shapes)
+            mass = 0.001
+            inertia = pymunk.moment_for_poly(mass, footprint.shapes, (footprint.centre[0], footprint.centre[1]))
+            body = pymunk.Body(mass, inertia)
+
+            a = pymunk.Poly(body, footprint.shapes, radius=0.01)
             a.friction = 0.5
+            
+            body.position = a.center_of_gravity[0], a.center_of_gravity[1]
+            t = pymunk.Transform(tx=a.center_of_gravity[0] / -1, ty=a.center_of_gravity[1] / -1)
+            a = pymunk.Poly(body, footprint.shapes, transform=t, radius=0.01)
+            a.friction = 0.5
+            
+            bodies.append(body)
             shapes.append(a)
                 
-    return shapes
+    return shapes, bodies
             
     
 def main(pcb):
@@ -154,6 +167,7 @@ def main(pcb):
     running = True
 
     space = pymunk.Space()
+    space.gravity = (0.0, 900.0)
     draw_options = pymunk.pygame_util.DrawOptions(screen)
     # disable the build in debug draw of collision point since we use our own code.
     draw_options.flags = (
@@ -169,8 +183,9 @@ def main(pcb):
     ch.data["surface"] = screen
     ch.post_solve = draw_collision
     
-    fp = add_footprints(space, pcb)
-    space.add(*fp)
+    
+    fp, bodies = add_footprints(space, pcb)
+    space.add(*bodies, *fp)
 
     while running:
         for event in pygame.event.get():
@@ -196,7 +211,7 @@ def main(pcb):
 
         ### Flip screen
         pygame.display.flip()
-        clock.tick(50)
+        clock.tick(5)
         pygame.display.set_caption("fps: " + str(clock.get_fps()))
 
 
