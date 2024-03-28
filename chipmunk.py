@@ -14,7 +14,10 @@ from pcbparse import Board
 
 random.seed(5)
 
-pymunk.pygame_util.positive_y_is_up = True
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 800
+SCREEN_ZOOM = 4
+
 
 def kicad_to_mm(vec):
     #Todo: handle single variables as well
@@ -113,12 +116,17 @@ def build_edge_cuts(space, pcb):
     for primitive in primitives:
         if primitive.GetShapeStr() == "Rect": #Todo: add more types
             points = kicad_to_mm(primitive.GetCorners())
+            centre = kicad_to_mm(pcb.GetBoardEdgesBoundingBox().Centre())
             
-            a = pymunk.Poly(space.static_body, points)
-            a.friction = 0.5
-            shapes.append(a)
+            # a = pymunk.Poly(space.static_body, points)
+            i = 0
+            while i < 4:
+                a = pymunk.Segment(space.static_body, points[i], points[(i + 1) % 4], 0.2)
+                a.friction = 0.5
+                shapes.append(a)
+                i += 1
             
-    return shapes
+    return shapes, centre
         
 def add_footprints(space, pcb):
     primitives = []
@@ -138,10 +146,10 @@ def add_footprints(space, pcb):
     
 def main(pcb):
 
-    bb = pcb.GetBoardEdgesBoundingBox().GetSize()
+    # bb = pcb.GetBoardEdgesBoundingBox().GetSize()
     pygame.init()
     # screen = pygame.display.set_mode((bb[0] / 1000000, bb[1] / 1000000))
-    screen = pygame.display.set_mode((800,800))
+    screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
     clock = pygame.time.Clock()
     running = True
 
@@ -151,9 +159,10 @@ def main(pcb):
     draw_options.flags = (
         draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS
     )
-
-    static_lines = build_edge_cuts(space, pcb)
+    draw_options.transform = pymunk.Transform.scaling(5) @ pymunk.Transform.translation(-50,-20)
+    static_lines, pcb_rect = build_edge_cuts(space, pcb)
     space.add(*static_lines)
+    
 
 
     ch = space.add_collision_handler(0, 0)
@@ -162,7 +171,6 @@ def main(pcb):
     
     fp = add_footprints(space, pcb)
     space.add(*fp)
-    # return
 
     while running:
         for event in pygame.event.get():
@@ -170,37 +178,16 @@ def main(pcb):
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
-                pygame.image.save(screen, "contact_with_friction.png")
 
-        # ticks_to_next_ball -= 1
-        # if ticks_to_next_ball <= 0:
-            # ticks_to_next_ball = 100
-            # mass = 0.1
-            # radius = 25
-            # inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
-            # body = pymunk.Body(mass, inertia)
-            # x = random.randint(115, 350)
-            # body.position = x, 400
-            # # body.velocity_func = planetGravity
-            # shape = pymunk.Circle(body, radius, (0, 0))
-            # shape.friction = 0.5
-            # space.add(body, shape)
-            # balls.append(shape)
+        
 
         ### Clear screen
         screen.fill(pygame.Color("white"))
 
         ### Draw stuff
         space.debug_draw(draw_options)
-
-        # balls_to_remove = []
-        # for ball in balls:
-            # if ball.body.position.y < 200:
-                # balls_to_remove.append(ball)
-        # for ball in balls_to_remove:
-            # space.remove(ball, ball.body)
-            # balls.remove(ball)
+        
+  
 
         ### Update physics
         dt = 1.0 / 60.0
