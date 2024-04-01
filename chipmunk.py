@@ -17,7 +17,13 @@ random.seed(5)
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 800
 SCREEN_ZOOM = 4
+ELECTRON_CONSTANT = 20
+BODY_ELASTICITY = 0.1
+BODY_FRICTION = 0.2
+BODY_MASS_COEFFICIENT = 1
 
+
+space = pymunk.Space()
 
 def kicad_to_mm(vec):
     #Todo: handle single variables as well
@@ -25,38 +31,44 @@ def kicad_to_mm(vec):
     if type(vec) == pcbnew.VECTOR2I:
         points = [vec.x / 1000000, vec.y / 1000000]
         return points
+    if isinstance(vec, int):
+        return vec / 1000000
     for k in vec:
         points.append((k[0] / 1000000, k[1] / 1000000))
         
     return points
 
-def draw_collision(arbiter, space, data):
-    for c in arbiter.contact_point_set.points:
-        r = max(3, abs(c.distance * 5))
-        r = int(r)
-
-        p = pymunk.pygame_util.to_pygame(c.point_a, data["surface"])
-        pygame.draw.circle(data["surface"], pygame.Color("orange"), p, r, 1)
-
-gravityStrength = 5.0e6
 
 
-def planetGravity(body, gravity, damping, dt):
-    # Gravitational acceleration is proportional to the inverse square of
-    # distance, and directed toward the origin. The central planet is assumed
-    # to be massive enough that it affects the satellites but not vice versa.
+def calc_physics(body, gravity, damping, dt):
     sq_dist = body.position.get_dist_sqrd((300, 300))
-    g = (
-        (body.position - pymunk.Vec2d(300, 300))
-        * -gravityStrength
-        / (sq_dist * math.sqrt(sq_dist))
-    )
+    bodies = space.bodies
+    # print(body.name)
+    # distance = b.position
+    d = [0, 0]
+    for b in bodies:
+        diff = b.position - body.position
+        # print(diff)
+        d += diff
+    distance = math.sqrt(d[0] ** 2 + d[1] ** 2)
+    if distance != 0:
+        force = ELECTRON_CONSTANT
+        g = [force * d[0] / (distance ** 2), force * d[1] / (distance ** 2)]
+    else:
+        g = 0
+    # sq_dist = body.position.get_dist_sqrd(distance)
+    # g = (force / sq_dist, force / sq_dist)
+    # print(distance, sq_dist, g)
+    
     pymunk.Body.update_velocity(body, g, damping, dt)
     
 class Footprint:
     def __init__(self, pcb, fp):
         self.shapes = []
         self.fp = fp
+        self.name = fp.GetReference()
+        # self.bb = kicad_to_mm(fp.GetBoundingBox())
+        self.mass = kicad_to_mm(fp.GetBoundingBox().GetArea()) * BODY_MASS_COEFFICIENT
         
         gi = fp.GraphicalItems()
 
@@ -139,17 +151,18 @@ def add_footprints(space, pcb):
         # print(footprint.points)
         if len(footprint.shapes) > 0:
 
-            mass = 0.001
-            inertia = pymunk.moment_for_poly(mass, footprint.shapes, (footprint.centre[0], footprint.centre[1]))
-            body = pymunk.Body(mass, inertia)
+            inertia = pymunk.moment_for_poly(footprint.mass, footprint.shapes, (footprint.centre[0], footprint.centre[1]))
+            body = pymunk.Body(footprint.mass, inertia / 1000000)
+            body.name = footprint.name
+            body.velocity_func = calc_physics
 
             a = pymunk.Poly(body, footprint.shapes, radius=0.01)
-            a.friction = 0.5
             
             body.position = a.center_of_gravity[0], a.center_of_gravity[1]
             t = pymunk.Transform(tx=a.center_of_gravity[0] / -1, ty=a.center_of_gravity[1] / -1)
             a = pymunk.Poly(body, footprint.shapes, transform=t, radius=0.01)
-            a.friction = 0.5
+            a.friction = BODY_FRICTION
+            a.elasticty = BODY_ELASTICITY
             
             bodies.append(body)
             shapes.append(a)
@@ -166,13 +179,12 @@ def main(pcb):
     clock = pygame.time.Clock()
     running = True
 
-    space = pymunk.Space()
-    space.gravity = (0.0, 900.0)
+    # space.gravity = (0.0, 900.0)
     draw_options = pymunk.pygame_util.DrawOptions(screen)
     # disable the build in debug draw of collision point since we use our own code.
-    draw_options.flags = (
-        draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS
-    )
+    # draw_options.flags = (
+        # draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS
+    # )
     draw_options.transform = pymunk.Transform.scaling(5) @ pymunk.Transform.translation(-50,-20)
     static_lines, pcb_rect = build_edge_cuts(space, pcb)
     space.add(*static_lines)
@@ -181,7 +193,7 @@ def main(pcb):
 
     ch = space.add_collision_handler(0, 0)
     ch.data["surface"] = screen
-    ch.post_solve = draw_collision
+    # ch.post_solve = draw_collision
     
     
     fp, bodies = add_footprints(space, pcb)
@@ -211,7 +223,7 @@ def main(pcb):
 
         ### Flip screen
         pygame.display.flip()
-        clock.tick(5)
+        clock.tick(50)
         pygame.display.set_caption("fps: " + str(clock.get_fps()))
 
 
