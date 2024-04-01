@@ -50,7 +50,7 @@ def calc_physics(body, gravity, damping, dt):
         diff = b.position - body.position
         # print(diff)
         d += diff
-    distance = math.sqrt(d[0] ** 2 + d[1] ** 2)
+    distance =  math.sqrt(d[0] ** 2 + d[1] ** 2) * -1.0
     if distance != 0:
         force = ELECTRON_CONSTANT
         g = [force * d[0] / (distance ** 2), force * d[1] / (distance ** 2)]
