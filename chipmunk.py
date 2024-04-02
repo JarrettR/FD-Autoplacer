@@ -18,6 +18,8 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 800
 SCREEN_ZOOM = 4
 ELECTRON_CONSTANT = 20
+SPRING_CONSTANT = 20000
+SPRING_DAMPING = 0.3
 BODY_ELASTICITY = 0.1
 BODY_FRICTION = 0.2
 BODY_MASS_COEFFICIENT = 1
@@ -41,7 +43,6 @@ def kicad_to_mm(vec):
 
 
 def calc_physics(body, gravity, damping, dt):
-    sq_dist = body.position.get_dist_sqrd((300, 300))
     bodies = space.bodies
     # print(body.name)
     # distance = b.position
@@ -50,9 +51,9 @@ def calc_physics(body, gravity, damping, dt):
         diff = b.position - body.position
         # print(diff)
         d += diff
-    distance =  math.sqrt(d[0] ** 2 + d[1] ** 2) * -1.0
+    distance =  math.sqrt(d[0] ** 2 + d[1] ** 2)
     if distance != 0:
-        force = ELECTRON_CONSTANT
+        force = ELECTRON_CONSTANT * -1.0
         g = [force * d[0] / (distance ** 2), force * d[1] / (distance ** 2)]
     else:
         g = 0
@@ -63,15 +64,20 @@ def calc_physics(body, gravity, damping, dt):
     pymunk.Body.update_velocity(body, g, damping, dt)
     
 class Footprint:
-    def __init__(self, pcb, fp):
+    def __init__(self, fp):
         self.shapes = []
         self.fp = fp
         self.name = fp.GetReference()
+        print(self.name)
+        self.centre = [0,0]
+        self.pads = []
         # self.bb = kicad_to_mm(fp.GetBoundingBox())
         self.mass = kicad_to_mm(fp.GetBoundingBox().GetArea()) * BODY_MASS_COEFFICIENT
-        
-        gi = fp.GraphicalItems()
+        self.gen_footprints()
+        self.get_pads()
 
+    def gen_footprints(self):
+        gi = self.fp.GraphicalItems()
         # drawings = fppcb.GetDrawings()
         points = {}
         polypoints = []
@@ -117,7 +123,36 @@ class Footprint:
             polypoints.append(points[key])
             
         self.shapes = polypoints
+       
+    def get_pads(self):
+        pads = self.fp.Pads()
         
+        i = 0
+        for pad in pads:
+            net = pad.GetNetname()
+            shape = pad.GetShape()
+            centre = kicad_to_mm(pad.GetCenter())
+            centre[0] = self.centre[0] - centre[0]
+            centre[1] = self.centre[1] - centre[1]
+            xy = [0,0]
+            if shape == pcbnew.SHAPE_T_RECT:
+                print("rect")
+                xy = kicad_to_mm(pad.GetBoundingBox().GetSize())
+                print(centre, xy)
+            elif shape == pcbnew.SHAPE_T_POLY:
+                print("poly")
+            elif shape == pcbnew.SHAPE_T_CIRCLE:
+                print("circ")
+            elif shape == pcbnew.SHAPE_T_ARC:
+                print("arc")
+            elif shape == pcbnew.SHAPE_T_SEGMENT:
+                print("segment")
+            elif shape == pcbnew.SHAPE_T_BEZIER:
+                print("unhandled bezier pad")
+            else:
+                print("unknown shape ", shape)
+            self.pads.append([i, net, centre, xy])
+       
 def build_edge_cuts(space, pcb):
     primitives = []
     shapes = []
@@ -147,7 +182,7 @@ def add_footprints(space, pcb):
     shapes = []
     footprints = pcb.GetFootprints()
     for fp in footprints:
-        footprint = Footprint(pcb, fp)
+        footprint = Footprint(fp)
         # print(footprint.points)
         if len(footprint.shapes) > 0:
 
@@ -181,23 +216,21 @@ def main(pcb):
 
     # space.gravity = (0.0, 900.0)
     draw_options = pymunk.pygame_util.DrawOptions(screen)
-    # disable the build in debug draw of collision point since we use our own code.
+    # Don't draw the spring constraint
     # draw_options.flags = (
-        # draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS
+        # draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_CONSTRAINTS
     # )
     draw_options.transform = pymunk.Transform.scaling(5) @ pymunk.Transform.translation(-50,-20)
     static_lines, pcb_rect = build_edge_cuts(space, pcb)
     space.add(*static_lines)
     
-
-
-    ch = space.add_collision_handler(0, 0)
-    ch.data["surface"] = screen
-    # ch.post_solve = draw_collision
-    
     
     fp, bodies = add_footprints(space, pcb)
     space.add(*bodies, *fp)
+    
+    
+    c = pymunk.DampedSpring(bodies[0], bodies[15], (1, 0), (-1, 0), 0, SPRING_CONSTANT, SPRING_DAMPING)
+    space.add(c)
 
     while running:
         for event in pygame.event.get():
