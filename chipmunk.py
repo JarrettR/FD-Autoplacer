@@ -19,11 +19,13 @@ SCREEN_HEIGHT = 800
 SCREEN_ZOOM = 4
 ELECTRON_CONSTANT = 20
 SPRING_CONSTANT = 20000
-SPRING_DAMPING = 0.3
+SPRING_DAMPING = 0.1
 BODY_ELASTICITY = 0.1
 BODY_FRICTION = 0.2
 BODY_MASS_COEFFICIENT = 1
 
+
+FOOTPRINT_COLOUR = (255.0, 0.0, 0.0, 255.0)
 
 space = pymunk.Space()
 
@@ -64,11 +66,12 @@ def calc_physics(body, gravity, damping, dt):
     pymunk.Body.update_velocity(body, g, damping, dt)
     
 class Footprint:
-    def __init__(self, fp):
+    def __init__(self, fp, nets):
         self.shapes = []
         self.fp = fp
         self.name = fp.GetReference()
         print(self.name)
+        self.nets = nets
         self.centre = [0,0]
         self.pads = []
         # self.bb = kicad_to_mm(fp.GetBoundingBox())
@@ -81,11 +84,11 @@ class Footprint:
         # drawings = fppcb.GetDrawings()
         points = {}
         polypoints = []
+        self.centre = kicad_to_mm(self.fp.GetCenter())
         # print(gi)
         for obj in gi:
             if obj.GetLayerName() == "F.Courtyard":
                 line = obj.GetConnectionPoints()
-                self.centre = kicad_to_mm(obj.GetCenter())
                 if len(line) == 0: 
                     continue
                 line_start = kicad_to_mm(line[0])
@@ -136,13 +139,15 @@ class Footprint:
             centre[1] = self.centre[1] - centre[1]
             xy = [0,0]
             if shape == pcbnew.SHAPE_T_RECT:
-                print("rect")
+                # print("rect")
                 xy = kicad_to_mm(pad.GetBoundingBox().GetSize())
-                print(centre, xy)
+                # print(centre, xy)
             elif shape == pcbnew.SHAPE_T_POLY:
-                print("poly")
+                # print("poly")
+                xy = kicad_to_mm(pad.GetBoundingBox().GetSize())
             elif shape == pcbnew.SHAPE_T_CIRCLE:
-                print("circ")
+                # print("circ")
+                xy = kicad_to_mm(pad.GetBoundingBox().GetSize())
             elif shape == pcbnew.SHAPE_T_ARC:
                 print("arc")
             elif shape == pcbnew.SHAPE_T_SEGMENT:
@@ -152,6 +157,28 @@ class Footprint:
             else:
                 print("unknown shape ", shape)
             self.pads.append([i, net, centre, xy])
+            if net in self.nets.keys():
+                self.nets[net].append([self.name, i])
+            else:
+                self.nets[net] = [[self.name, i]]
+            i += 1
+            
+       
+    def get_net_connections(self, target):
+        # print(self.nets)
+        # print(footprints.keys())
+        targetNets = []
+        for net in self.nets:
+            # print(net, self.nets[net])
+            for c in self.nets[net]:
+                # print(c)
+                if c[0] == self.name:
+                    # print(target, c[0])
+                    for e in self.nets[net]:
+                        if e[0] == target:
+                            targetNets.append([c[1], e])
+                            # print("target", e[0])
+        return targetNets
        
 def build_edge_cuts(space, pcb):
     primitives = []
@@ -176,15 +203,33 @@ def build_edge_cuts(space, pcb):
             
     return shapes, centre
         
+def connect(space, footprints, sourceFp, targets):
+    for conn in targets:
+        sourcePin = conn[0]
+        destFp = conn[1][0]
+        destPin = conn[1][1]
+        # print(sourcePin, destFp, destPin)
+        body1 = footprints[sourceFp].body
+        body2 = footprints[destFp].body
+        xy1 = footprints[sourceFp].pads[sourcePin][2]
+        xy2 = footprints[destFp].pads[destPin][2]
+        # print(sourceFp, xy1, destFp, xy2)
+        c = pymunk.DampedSpring(body1, body2, xy1, xy2, 0, SPRING_CONSTANT, SPRING_DAMPING)
+        space.add(c)
+    
+
 def add_footprints(space, pcb):
     primitives = []
     bodies = []
     shapes = []
-    footprints = pcb.GetFootprints()
-    for fp in footprints:
-        footprint = Footprint(fp)
+    nets = {}
+    footprints = {}
+    pcbFootprints = pcb.GetFootprints()
+    for fp in pcbFootprints:
+        footprint = Footprint(fp, nets)
         # print(footprint.points)
         if len(footprint.shapes) > 0:
+            footprints[footprint.name] = footprint
 
             inertia = pymunk.moment_for_poly(footprint.mass, footprint.shapes, (footprint.centre[0], footprint.centre[1]))
             body = pymunk.Body(footprint.mass, inertia / 1000000)
@@ -198,10 +243,29 @@ def add_footprints(space, pcb):
             a = pymunk.Poly(body, footprint.shapes, transform=t, radius=0.01)
             a.friction = BODY_FRICTION
             a.elasticty = BODY_ELASTICITY
+            a.color = FOOTPRINT_COLOUR
+            # a2 = pymunk.Circle(body, 1.0, (1, 1))
+            # a2.color = (0, 255, 0, 255)
             
             bodies.append(body)
             shapes.append(a)
-                
+            # shapes.append(a2)
+            footprint.body = body
+            footprint.shape = a
+            
+            
+    space.add(*bodies, *shapes)
+    
+    completedF1 = []
+    for f1 in footprints:
+        completedF1.append(f1)
+        for f2 in footprints:
+            if f2 not in completedF1:
+                targets = footprints[f1].get_net_connections(f2)
+                if len(targets) > 0:
+                    # print(f1, targets)
+                    connect(space, footprints, f1, targets)
+        
     return shapes, bodies
             
     
@@ -226,11 +290,9 @@ def main(pcb):
     
     
     fp, bodies = add_footprints(space, pcb)
-    space.add(*bodies, *fp)
     
+    # pygame.draw.circle(screen, (0,0,255,255), (20,300), 20)
     
-    c = pymunk.DampedSpring(bodies[0], bodies[15], (1, 0), (-1, 0), 0, SPRING_CONSTANT, SPRING_DAMPING)
-    space.add(c)
 
     while running:
         for event in pygame.event.get():
@@ -246,6 +308,7 @@ def main(pcb):
 
         ### Draw stuff
         space.debug_draw(draw_options)
+        
         
   
 
