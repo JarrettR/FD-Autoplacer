@@ -18,7 +18,7 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 800
 SCREEN_ZOOM = 4
 ELECTRON_CONSTANT = 20
-SPRING_CONSTANT = 20000
+SPRING_CONSTANT = 2000
 SPRING_DAMPING = 0.1
 BODY_ELASTICITY = 0.1
 BODY_FRICTION = 0.2
@@ -70,7 +70,7 @@ class Footprint:
         self.shapes = []
         self.fp = fp
         self.name = fp.GetReference()
-        print(self.name)
+        # print(self.name)
         self.nets = nets
         self.centre = [0,0]
         self.pads = []
@@ -149,9 +149,11 @@ class Footprint:
                 # print("circ")
                 xy = kicad_to_mm(pad.GetBoundingBox().GetSize())
             elif shape == pcbnew.SHAPE_T_ARC:
-                print("arc")
+                # print("arc")
+                xy = kicad_to_mm(pad.GetBoundingBox().GetSize())
             elif shape == pcbnew.SHAPE_T_SEGMENT:
-                print("segment")
+                # print("segment")
+                xy = kicad_to_mm(pad.GetBoundingBox().GetSize())
             elif shape == pcbnew.SHAPE_T_BEZIER:
                 print("unhandled bezier pad")
             else:
@@ -281,9 +283,9 @@ def main(pcb):
     # space.gravity = (0.0, 900.0)
     draw_options = pymunk.pygame_util.DrawOptions(screen)
     # Don't draw the spring constraint
-    # draw_options.flags = (
-        # draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_CONSTRAINTS
-    # )
+    draw_options.flags = (
+        draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_CONSTRAINTS
+    )
     draw_options.transform = pymunk.Transform.scaling(5) @ pymunk.Transform.translation(-50,-20)
     static_lines, pcb_rect = build_edge_cuts(space, pcb)
     space.add(*static_lines)
