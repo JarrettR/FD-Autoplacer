@@ -17,9 +17,9 @@ random.seed(5)
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 800
 SCREEN_ZOOM = 4
-ELECTRON_CONSTANT = 20
-SPRING_CONSTANT = 2000
-SPRING_DAMPING = 0.1
+ELECTRON_CONSTANT = 100
+SPRING_CONSTANT = 20000
+SPRING_DAMPING = 0.01
 BODY_ELASTICITY = 0.1
 BODY_FRICTION = 0.2
 BODY_MASS_COEFFICIENT = 1
@@ -73,6 +73,7 @@ class Footprint:
         # print(self.name)
         self.nets = nets
         self.centre = [0,0]
+        self.locked = fp.IsLocked()
         self.pads = []
         # self.bb = kicad_to_mm(fp.GetBoundingBox())
         self.mass = kicad_to_mm(fp.GetBoundingBox().GetArea()) * BODY_MASS_COEFFICIENT
@@ -186,14 +187,15 @@ def build_edge_cuts(space, pcb):
     primitives = []
     shapes = []
     drawings = pcb.GetDrawings()
+    
+    centre = kicad_to_mm(pcb.GetBoardEdgesBoundingBox().Centre())
     for drawing in drawings:
         if drawing.GetLayerName() == "Edge.Cuts":
             primitives.append(drawing)
             
     for primitive in primitives:
-        if primitive.GetShapeStr() == "Rect": #Todo: add more types
+        if primitive.GetShape() == pcbnew.SHAPE_T_RECT: #Todo: add more types
             points = kicad_to_mm(primitive.GetCorners())
-            centre = kicad_to_mm(pcb.GetBoardEdgesBoundingBox().Centre())
             
             # a = pymunk.Poly(space.static_body, points)
             i = 0
@@ -202,6 +204,15 @@ def build_edge_cuts(space, pcb):
                 a.friction = 0.5
                 shapes.append(a)
                 i += 1
+        elif primitive.GetShape() == pcbnew.SHAPE_T_SEGMENT:
+            line = primitive.GetConnectionPoints()
+            if len(line) == 0: 
+                continue
+            line_start = kicad_to_mm(line[0])
+            line_end = kicad_to_mm(line[1])
+            a = pymunk.Segment(space.static_body, line_start, line_end, 0.2)
+            a.friction = 0.5
+            shapes.append(a)
             
     return shapes, centre
         
@@ -210,6 +221,8 @@ def connect(space, footprints, sourceFp, targets):
         sourcePin = conn[0]
         destFp = conn[1][0]
         destPin = conn[1][1]
+        if footprints[sourceFp].locked == True and footprints[destFp].locked == True:
+            continue
         # print(sourcePin, destFp, destPin)
         body1 = footprints[sourceFp].body
         body2 = footprints[destFp].body
@@ -234,7 +247,12 @@ def add_footprints(space, pcb):
             footprints[footprint.name] = footprint
 
             inertia = pymunk.moment_for_poly(footprint.mass, footprint.shapes, (footprint.centre[0], footprint.centre[1]))
-            body = pymunk.Body(footprint.mass, inertia / 1000000)
+            
+            if footprint.locked == True:
+                body_type = pymunk.Body.STATIC
+            else:
+                body_type = pymunk.Body.DYNAMIC
+            body = pymunk.Body(footprint.mass, inertia / 1000000,  body_type = body_type)
             body.name = footprint.name
             body.velocity_func = calc_physics
 
@@ -242,6 +260,7 @@ def add_footprints(space, pcb):
             
             body.position = a.center_of_gravity[0], a.center_of_gravity[1]
             t = pymunk.Transform(tx=a.center_of_gravity[0] / -1, ty=a.center_of_gravity[1] / -1)
+            
             a = pymunk.Poly(body, footprint.shapes, transform=t, radius=0.01)
             a.friction = BODY_FRICTION
             a.elasticty = BODY_ELASTICITY
@@ -306,7 +325,7 @@ def main(pcb):
         
 
         ### Clear screen
-        screen.fill(pygame.Color("white"))
+        screen.fill(pygame.Color("black"))
 
         ### Draw stuff
         space.debug_draw(draw_options)
@@ -321,12 +340,12 @@ def main(pcb):
 
         ### Flip screen
         pygame.display.flip()
-        clock.tick(50)
+        clock.tick(100)
         pygame.display.set_caption("fps: " + str(clock.get_fps()))
 
 
 if __name__ == "__main__":
-    pcb = pcbnew.LoadBoard("tests\\v3.kicad_pcb")
+    pcb = pcbnew.LoadBoard("tests\\complicated.kicad_pcb")
     # print(pcb.GetFootprints())
     
     sys.exit(main(pcb))
