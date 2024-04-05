@@ -79,6 +79,23 @@ class Footprint:
         self.mass = kicad_to_mm(fp.GetBoundingBox().GetArea()) * BODY_MASS_COEFFICIENT
         self.gen_footprints()
         self.get_pads()
+        
+    def recursive_poly_sorting(self, points, line_start, line_end):
+        #Conversion of mixed up start/end points to a polygon, by way of dictionary entries
+        key = "{},{}".format(line_start[0],line_start[1])
+        if key in points.keys():
+            key = "{},{}".format(line_end[0],line_end[1])
+            if key in points.keys():
+                key = "{},{}".format(line_start[0],line_start[1])
+                temp = points[key]
+                points[key] = line_start
+                self.recursive_poly_sorting(points, temp, line_end)
+            # key = "{},{}".format(line_end[0],line_end[1])
+            else:
+                line_end = line_start
+                # key = "{},{}".format(line_end[0],line_end[1])
+        points[key] = line_end
+        return key
 
     def gen_footprints(self):
         gi = self.fp.GraphicalItems()
@@ -98,28 +115,8 @@ class Footprint:
                 if len(polypoints) == 0:
                     polypoints.append(line_start)
                     
-                #Conversion of mixed up start/end points to a polygon, by way of dictionary entries
-                key = "{},{}".format(line_start[0],line_start[1])
-                # print(key)
-                if key in points.keys():
-                    key = "{},{}".format(line_end[0],line_end[1])
-                    # print("Alt: ", key)
-                    if key in points.keys():
-                        # print("Extra alt")
-                        # print(points)
-                        temp = points[key]
-                        points[key] = line_start
-                        key = "{},{}".format(temp[0],temp[1])
-                        # print(key)
-                        if key in points.keys(): # With enough nesting, you have recursion*
-                            temp = points[key]
-                            points[key] = line_start
-                            key = "{},{}".format(temp[0],temp[1])
-                        points[key] = line_end
-                        # print(points)
-                    else:
-                        line_end = line_start
-                points[key] = line_end
+                self.recursive_poly_sorting(points, line_start, line_end)
+                # print(points)
             
         # print(points)
         for i in range(len(points)):
@@ -345,7 +342,7 @@ def main(pcb):
 
 
 if __name__ == "__main__":
-    pcb = pcbnew.LoadBoard("tests\\complicated.kicad_pcb")
+    pcb = pcbnew.LoadBoard("tests\\v3.kicad_pcb")
     # print(pcb.GetFootprints())
     
     sys.exit(main(pcb))
