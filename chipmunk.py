@@ -210,6 +210,20 @@ def build_edge_cuts(space, pcb):
             a = pymunk.Segment(space.static_body, line_start, line_end, 0.2)
             a.friction = 0.5
             shapes.append(a)
+        elif primitive.GetShape() == pcbnew.SHAPE_T_ARC:
+            line = primitive.GetConnectionPoints()
+            if len(line) == 0: 
+                continue
+            line_start = kicad_to_mm(line[0])
+            line_mid = kicad_to_mm(line[1])
+            line_end = kicad_to_mm(line[2])
+            a = pymunk.Segment(space.static_body, line_start, line_mid, 0.2)
+            a.friction = 0.5
+            b = pymunk.Segment(space.static_body, line_mid, line_end, 0.2)
+            b.friction = 0.5
+            shapes.append(b)
+        else:
+            print("Edge cut shape: ", primitive.GetShape())
             
     return shapes, centre
         
@@ -319,30 +333,24 @@ def main(pcb):
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
 
-        
-
-        ### Clear screen
+       
         screen.fill(pygame.Color("black"))
 
         ### Draw stuff
         space.debug_draw(draw_options)
         
-        
-  
-
         ### Update physics
         dt = 1.0 / 60.0
         for x in range(1):
             space.step(dt)
 
-        ### Flip screen
         pygame.display.flip()
         clock.tick(100)
         pygame.display.set_caption("fps: " + str(clock.get_fps()))
 
 
 if __name__ == "__main__":
-    pcb = pcbnew.LoadBoard("tests\\v3.kicad_pcb")
+    pcb = pcbnew.LoadBoard("tests\\sct2650.kicad_pcb")
     # print(pcb.GetFootprints())
     
     sys.exit(main(pcb))
